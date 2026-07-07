@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Ore Rush</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #0d0d13;
+    overflow: hidden;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    font-family: 'Courier New', monospace;
+  }
+  #wrap {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 960px;
+    height: 600px;
+    transform-origin: center;
+  }
+  canvas {
+    display: block;
+    image-rendering: pixelated;
+    box-shadow: 0 0 80px rgba(0,0,0,.7);
+  }
+  .btn {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background: #2b3040;
+    color: #e8ecf5;
+    border: 3px solid #4a5268;
+    box-shadow: 0 4px 0 #12141c;
+    padding: 10px 18px;
+    cursor: pointer;
+    font-size: 15px;
+  }
+  .btn:hover { background: #38405a; }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #12141c; }
+  .btn.big {
+    font-size: 22px;
+    padding: 14px 34px;
+    background: #b8862c;
+    border-color: #e8b64a;
+    color: #fff8e0;
+    box-shadow: 0 5px 0 #6b4d12;
+  }
+  .btn.big:hover { background: #cf9a35; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  #bottombar {
+    position: absolute;
+    left: 0; right: 0; bottom: 14px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    pointer-events: none;
+  }
+  #bottombar .btn { pointer-events: auto; }
+  #potionRow {
+    position: absolute;
+    left: 0; right: 0; bottom: 74px;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    pointer-events: none;
+  }
+  .chip {
+    background: rgba(20,24,34,.9);
+    border: 2px solid #5a4a8a;
+    color: #cdbdf5;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    padding: 4px 8px;
+  }
+  .panel {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%,-50%);
+    width: 820px;
+    max-height: 540px;
+    background: #171a23;
+    border: 4px solid #3a4152;
+    box-shadow: 0 8px 0 #000, 0 0 60px rgba(0,0,0,.8);
+    color: #dfe4ef;
+    display: none;
+    flex-direction: column;
+  }
+  .panel.open { display: flex; }
+  .phead {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #212534;
+    border-bottom: 3px solid #3a4152;
+  }
+  .phead h2 { margin: 0; font-size: 20px; letter-spacing: 2px; }
+  .phead .wallet { font-size: 14px; font-weight: bold; color: #ffd94a; }
+  .pbody { overflow-y: auto; padding: 14px; }
+  .pbody::-webkit-scrollbar { width: 10px; }
+  .pbody::-webkit-scrollbar-thumb { background: #3a4152; }
+  .branches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .branch h3 {
+    margin: 0 0 8px;
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-align: center;
+    padding: 5px;
+    background: #262b3b;
+    border: 2px solid #3a4152;
+  }
+  .node {
+    background: #1e2230;
+    border: 2px solid #384056;
+    padding: 8px;
+    margin-bottom: 8px;
+  }
+  .node.locked { opacity: .38; }
+  .node.maxed { border-color: #b8862c; }
+  .nname { font-size: 12px; font-weight: bold; letter-spacing: .5px; }
+  .nname .lvl { float: right; color: #8fa0c0; }
+  .ndesc { font-size: 11px; color: #9aa6bd; margin: 4px 0 6px; min-height: 24px; }
+  .node .btn { width: 100%; font-size: 11px; padding: 6px; }
+  .node .btn.afford { background: #2c5a34; border-color: #4a8a56; }
+  .node .btn.afford:hover { background: #367042; }
+  .tabs { display: flex; gap: 8px; padding: 12px 14px 0; }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 8px;
+    font-weight: bold;
+    font-size: 13px;
+    letter-spacing: 1px;
+    background: #1e2230;
+    border: 2px solid #384056;
+    cursor: pointer;
+    color: #9aa6bd;
+  }
+  .tab.active { background: #2b3040; color: #fff; border-color: #6a7490; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .card {
+    background: #1e2230;
+    border: 2px solid #384056;
+    padding: 10px;
+    text-align: center;
+  }
+  .card.equipped { border-color: #e8b64a; }
+  .card .cicon { font-size: 34px; line-height: 1.4; }
+  .card .cname { font-weight: bold; font-size: 13px; letter-spacing: 1px; }
+  .card .cstat { font-size: 11px; color: #9aa6bd; margin: 6px 0; min-height: 30px; }
+  .card .btn { width: 100%; font-size: 11px; padding: 6px; }
+  .card .btn.afford { background: #6b5a1e; border-color: #b8862c; }
+  #results .pbody { text-align: center; padding: 26px; }
+  #results h1 { margin: 0 0 18px; font-size: 30px; letter-spacing: 3px; color: #e8b64a; }
+  .rrow { font-size: 18px; margin: 10px 0; letter-spacing: 1px; }
+  .rrow b { color: #ffd94a; }
+  .newbest { color: #7fe08a; font-weight: bold; font-size: 15px; letter-spacing: 2px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="960" height="600"></canvas>
+
+  <div id="potionRow"></div>
+  <div id="bottombar">
+    <button class="btn" id="skillsBtn">⛏ Skills</button>
+    <button class="btn big" id="startBtn">Start Run</button>
+    <button class="btn" id="shopBtn">🪙 Shop</button>
+    <button class="btn" id="muteBtn">🔊</button>
+  </div>
+
+  <div class="panel" id="skills">
+    <div class="phead">
+      <h2>⛏ SKILL TREE</h2>
+      <span class="wallet" id="skillWallet"></span>
+      <button class="btn" data-close>✕</button>
+    </div>
+    <div class="pbody"><div class="branches" id="skillGrid"></div></div>
+  </div>
+
+  <div class="panel" id="shop">
+    <div class="phead">
+      <h2>🪙 SHOP</h2>
+      <span class="wallet" id="shopWallet"></span>
+      <button class="btn" data-close>✕</button>
+    </div>
+    <div class="tabs">
+      <div class="tab active" data-tab="picks">Pickaxes</div>
+      <div class="tab" data-tab="chars">Miners</div>
+      <div class="tab" data-tab="potions">Potions</div>
+    </div>
+    <div class="pbody"><div class="cards" id="shopGrid"></div></div>
+  </div>
+
+  <div class="panel" id="results">
+    <div class="pbody">
+      <h1>SHIFT OVER</h1>
+      <div id="resultRows"></div>
+      <br>
+      <button class="btn big" id="continueBtn">Continue</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+// ---------- constants ----------
+const W = 960, H = 600;
+const GROUND_Y = 520;
+const ROCK_CX = 600;
+const CELL = 12;
+const SAVE_KEY = 'orerush_save';
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+// ---------- data: skills ----------
+const SKILLS = [
+  // POWER
+  { id:'sharp',   br:0, tier:0, icon:'⛏', name:'Sharp Edge',   max:10, base:10,   gr:1.6,  desc:l=>`+2 damage per level (now +${2*l})` },
+  { id:'swift',   br:0, tier:1, icon:'💨', name:'Swift Arms',   max:6,  base:60,   gr:1.6,  desc:l=>`-8% swing cooldown per level` },
+  { id:'keen',    br:0, tier:2, icon:'🎯', name:'Keen Eye',     max:8,  base:250,  gr:1.65, desc:l=>`+4% crit chance per level` },
+  { id:'heavy',   br:0, tier:3, icon:'💥', name:'Heavy Blows',  max:6,  base:1200, gr:1.7,  desc:l=>`+50% crit damage per level` },
+  { id:'shock',   br:0, tier:4, icon:'🌊', name:'Shockwave',    max:1,  base:8000, gr:1,    desc:l=>`Crits strike a second time for 50%` },
+  // AUTOMATION
+  { id:'auto',    br:1, tier:0, icon:'🤖', name:'Auto-Miner',   max:8,  base:15,   gr:1.7,  desc:l=>`A drone mines for you (+0.2/s per level)` },
+  { id:'dronepow',br:1, tier:1, icon:'🛠', name:'Drone Power',  max:6,  base:70,   gr:1.6,  desc:l=>`Drone hits +10% of pick damage per level` },
+  { id:'collect', br:1, tier:2, icon:'🧲', name:'Collector Bot',max:5,  base:220,  gr:1.65, desc:l=>`Chunks are gathered faster` },
+  { id:'over',    br:1, tier:3, icon:'🔁', name:'Overdrive',    max:1,  base:1500, gr:1,    desc:l=>`Every 10th swing triggers 3 drone strikes` },
+  { id:'twin',    br:1, tier:4, icon:'👯', name:'Twin Drones',  max:1,  base:9000, gr:1,    desc:l=>`Double your drone mining speed` },
+  // FORTUNE
+  { id:'veins',   br:2, tier:0, icon:'💎', name:'Rich Veins',   max:6,  base:12,   gr:1.75, desc:l=>`+1 chunk per swing (now ${1+l})` },
+  { id:'goldrush',br:2, tier:1, icon:'🪙', name:'Gold Rush',    max:8,  base:65,   gr:1.6,  desc:l=>`+2% gold chunk chance per level` },
+  { id:'lucky',   br:2, tier:2, icon:'🍀', name:'Lucky Strikes',max:6,  base:260,  gr:1.65, desc:l=>`+1.5% special ore chance per level` },
+  { id:'polish',  br:2, tier:3, icon:'✨', name:'Gem Polish',   max:10, base:1000, gr:1.55, desc:l=>`Chunks worth +25% per level` },
+  { id:'midas',   br:2, tier:4, icon:'👑', name:'Midas Touch',  max:1,  base:8500, gr:1,    desc:l=>`Gold chunks also pay out stones` },
+  // TIME & DEPTH
+  { id:'shift',   br:3, tier:0, icon:'⏳', name:'Long Shift',   max:6,  base:14,   gr:1.8,  desc:l=>`+5s run time per level` },
+  { id:'deep',    br:3, tier:1, icon:'⬇', name:'Deep Start',   max:4,  base:120,  gr:1.9,  desc:l=>`Start runs ${l} layer(s) deeper` },
+  { id:'frost',   br:3, tier:2, icon:'❄', name:'Permafrost',   max:4,  base:300,  gr:1.7,  desc:l=>`Frost ore freezes time +2s per level` },
+  { id:'storm',   br:3, tier:3, icon:'🌩', name:'Storm Caller', max:4,  base:1300, gr:1.7,  desc:l=>`+1 lightning bolt per storm ore` },
+  { id:'tmine',   br:3, tier:4, icon:'⏱', name:'Time Miner',   max:1,  base:8000, gr:1,    desc:l=>`Breaking a layer adds +4s to the clock` },
+];
+const BRANCH_NAMES = ['POWER', 'AUTOMATION', 'FORTUNE', 'TIME'];
+
+// ---------- data: shop ----------
+const PICKS = [
+  { id:'rusty',   icon:'⛏',  name:'Rusty Pick',   cost:0,    dmg:1,   crit:0,    gold:0,    spec:0,    splash:0, stat:'The old faithful.' },
+  { id:'copper',  icon:'⚒',  name:'Copper Pick',  cost:25,   dmg:1.6, crit:0,    gold:0,    spec:0,    splash:0, stat:'x1.6 damage' },
+  { id:'iron',    icon:'🔨', name:'Iron Pick',    cost:75,   dmg:2.4, crit:.05,  gold:0,    spec:0,    splash:0, stat:'x2.4 damage, +5% crit' },
+  { id:'crystal', icon:'🔮', name:'Crystal Pick', cost:200,  dmg:3.5, crit:0,    gold:0,    spec:.04,  splash:0, stat:'x3.5 damage, +4% special ore' },
+  { id:'molten',  icon:'🔥', name:'Molten Pick',  cost:500,  dmg:5,   crit:0,    gold:0,    spec:0,    splash:2, stat:'x5 damage, crits splash +2 chunks' },
+  { id:'void',    icon:'🌑', name:'Void Pick',    cost:1200, dmg:8,   crit:.10,  gold:.05,  spec:0,    splash:0, stat:'x8 damage, +10% crit, +5% gold' },
+];
+const CHARS = [
+  { id:'moe',   icon:'👷', name:'Miner Moe',       cost:0,   dmg:1,   cd:1,    goldM:1,    specM:1, bolt:0, stat:'Balanced and dependable.' },
+  { id:'pearl', icon:'👩‍🦰', name:'Prospector Pearl',cost:100, dmg:1,   cd:1,    goldM:1.75, specM:1, bolt:0, stat:'x1.75 gold chunk chance' },
+  { id:'gus',   icon:'🗿', name:'Golem Gus',       cost:300, dmg:1.5, cd:1.15, goldM:1,    specM:1, bolt:0, stat:'x1.5 damage, slightly slower' },
+  { id:'nova',  icon:'🧙', name:'Seer Nova',       cost:750, dmg:1,   cd:1,    goldM:1,    specM:2, bolt:1, stat:'x2 special ore chance, +1 bolt' },
+];
+const POTIONS = [
+  { id:'power', icon:'🧪', name:'Power Potion', cost:15, stat:'2x damage next run' },
+  { id:'greed', icon:'💰', name:'Greed Potion', cost:15, stat:'2x chunk value next run' },
+  { id:'haste', icon:'⏰', name:'Haste Potion', cost:20, stat:'+20s next run' },
+  { id:'storm', icon:'🌩', name:'Storm Potion', cost:25, stat:'Lightning volley every 8s next run' },
+];
+
+// ---------- rock palettes ----------
+const TIERS = [
+  { name:'Stone',    body:['#8a8f98','#6d727c','#565b66'], edge:'#3c414c', spark:'#c9ced8' },
+  { name:'Copper',   body:['#a06b46','#84543a','#68402c'], edge:'#452a1c', spark:'#f0a05a' },
+  { name:'Iron',     body:['#7c8698','#616b7e','#4b5364'], edge:'#333a48', spark:'#b9c8e0' },
+  { name:'Emerald',  body:['#4f8a5c','#3d6f49','#2e5738'], edge:'#1e3c26', spark:'#7fe08a' },
+  { name:'Gold',     body:['#b8912e','#997722','#7a5e1a'], edge:'#4d3a0e', spark:'#ffd94a' },
+  { name:'Amethyst', body:['#7a5aa0','#614784','#4b3568'], edge:'#2e2042', spark:'#c99aff' },
+  { name:'Magma',    body:['#5e3a34','#4a2c28','#38201d'], edge:'#1e0f0d', spark:'#ff7a3c' },
+  { name:'Void',     body:['#3a3350','#2c2740','#201c30'], edge:'#100e1a', spark:'#ff5ad0' },
+];
+
+// ---------- save ----------
+let sv = {
+  stones: 0, gold: 0,
+  skills: {},
+  picks: ['rusty'], pick: 'rusty',
+  chars: ['moe'], char: 'moe',
+  armed: {},
+  bestDepth: 0, runs: 0, lifeStones: 0,
+  muted: false,
+};
+try {
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (raw) sv = Object.assign(sv, JSON.parse(raw));
+} catch (e) {}
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(sv)); } catch (e) {} }
+
+// ---------- helpers ----------
+const rnd = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function fmt(n) {
+  if (n < 1000) return String(Math.floor(n));
+  const u = ['K','M','B','T','Qa'];
+  let i = -1;
+  while (n >= 1000 && i < u.length - 1) { n /= 1000; i++; }
+  return (n >= 100 ? Math.floor(n) : n.toFixed(1)) + u[i];
+}
+function mulberry(seed) {
+  return () => {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const lvl = id => sv.skills[id] || 0;
+function skillCost(s) { return Math.round(s.base * Math.pow(s.gr, lvl(s.id))); }
+const pickDef = () => PICKS.find(p => p.id === sv.pick);
+const charDef = () => CHARS.find(c => c.id === sv.char);
+
+// ---------- derived stats ----------
+function calcStats() {
+  const p = pickDef(), c = charDef();
+  return {
+    dmg: (3 + 2 * lvl('sharp')) * p.dmg * c.dmg * (run.pots.power ? 2 : 1),
+    cooldown: 340 * Math.pow(0.92, lvl('swift')) * c.cd,
+    crit: clamp(0.05 + 0.04 * lvl('keen') + p.crit, 0, 0.65),
+    critMult: 2 + 0.5 * lvl('heavy'),
+    autoRate: lvl('auto') ? (0.4 + 0.2 * (lvl('auto') - 1)) * (lvl('twin') ? 2 : 1) : 0,
+    autoPow: 0.5 + 0.1 * lvl('dronepow'),
+    collectDelay: Math.max(200, 1100 - 180 * lvl('collect')),
+    chunks: 1 + lvl('veins'),
+    goldCh: clamp((0.03 + 0.02 * lvl('goldrush') + p.gold) * c.goldM, 0, 0.25),
+    specCh: clamp((0.02 + 0.015 * lvl('lucky') + p.spec) * c.specM, 0, 0.15),
+    valueMult: (1 + 0.25 * lvl('polish')) * (run.pots.greed ? 2 : 1),
+    runTime: 45 + 5 * lvl('shift') + (run.pots.haste ? 20 : 0),
+    frostDur: 4 + 2 * lvl('frost'),
+    bolts: 3 + lvl('storm') + c.bolt,
+    splash: p.splash,
+  };
+}
+
+// ---------- state ----------
+let state = 'base'; // 'base' | 'run' | 'ending' | 'results'
+let run = { stones: 0, gold: 0, depth: 0, startDepth: 0, timeLeft: 0, pots: {}, manualSwings: 0, stormPotT: 0 };
+let rockHP = 50, rockMaxHP = 50, rockCells = [];
+let swingT = 999, swingCD = 0, autoAcc = 0;
+let hitFlash = 0, shake = 0, frostT = 0, magnetT = 0, endingT = 0;
+let chunks = [], particles = [], popups = [], bolts = [], pendingBolts = [];
+let banner = null;
+let elapsed = 0, lastTime = performance.now();
+let stats = null;
+
+function rockHPFor(d) { return Math.round(50 * Math.pow(1.55, d)); }
+function depthValue(d) { return Math.pow(1.3, d); }
+function tierFor(d) { return TIERS[d % TIERS.length]; }
+
+function genRock(depth) {
+  const rand = mulberry(depth * 7919 + 13);
+  const rows = 26, maxHW = 10;
+  rockCells = [];
+  for (let r = 0; r < rows; r++) {
+    const t = r / (rows - 1);
+    const hw = Math.max(2, Math.round(maxHW * (0.45 + 0.6 * Math.pow(Math.sin(Math.PI * Math.pow(t, 0.75)), 0.8)) + (rand() - 0.5) * 1.6));
+    const row = [];
+    for (let cc = -hw; cc <= hw; cc++) {
+      row.push({ c: cc, shade: Math.floor(rand() * 3), spark: rand() < 0.07 });
+    }
+    rockCells.push(row);
+  }
+}
+
+// ---------- audio ----------
+let actx = null;
+function audio() {
+  if (sv.muted) return null;
+  if (!actx) {
+    try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
+  }
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+function tone(type, f0, f1, dur, vol, delay = 0) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + delay;
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + dur);
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(a.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+const sfx = {
+  clink: () => tone('triangle', 800 + Math.random() * 400, 180, 0.08, 0.2),
+  crit:  () => { tone('square', 300, 60, 0.15, 0.25); tone('triangle', 1400, 300, 0.1, 0.15); },
+  brk:   () => { tone('sawtooth', 120, 30, 0.5, 0.35); tone('square', 500, 80, 0.3, 0.2); },
+  blip:  () => tone('sine', 700 + Math.random() * 200, 1200, 0.06, 0.1),
+  goldb: () => { tone('sine', 900, 1600, 0.08, 0.15); tone('sine', 1300, 2000, 0.1, 0.1, 0.05); },
+  spec:  () => { tone('sine', 500, 1000, 0.15, 0.15); tone('sine', 800, 1600, 0.2, 0.12, 0.08); },
+  zap:   () => { tone('sawtooth', 2000, 100, 0.15, 0.25); tone('square', 150, 50, 0.2, 0.2); },
+  frz:   () => { tone('sine', 1800, 600, 0.4, 0.15); tone('sine', 2400, 900, 0.5, 0.1, 0.1); },
+  mag:   () => tone('sawtooth', 100, 800, 0.3, 0.15),
+  horn:  () => { tone('square', 400, 400, 0.15, 0.2); tone('square', 300, 300, 0.25, 0.2, 0.18); },
+  buy:   () => { tone('sine', 600, 900, 0.08, 0.15); tone('sine', 900, 1300, 0.1, 0.15, 0.07); },
+  err:   () => tone('square', 140, 100, 0.12, 0.15),
+};
+
+// ---------- popups / particles ----------
+function popup(x, y, txt, color, size = 15) {
+  popups.push({ x, y, txt, color, size, t: 0, life: 900 });
+  if (popups.length > 30) popups.shift();
+}
+function burst(x, y, color, n, speed = 220) {
+  for (let i = 0; i < n; i++) {
+    const a = rnd(0, Math.PI * 2), s = rnd(speed * 0.3, speed);
+    particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 60, t: 0, life: rnd(300, 700), color, size: rnd(2, 5) });
+  }
+  if (particles.length > 350) particles.splice(0, particles.length - 350);
+}
+
+// ---------- chunks ----------
+const CHUNK_COLORS = { stone: '#9aa0ab', gold: '#ffd94a', storm: '#7fd0ff', frost: '#aef4ff', magnet: '#d08bff' };
+function spawnChunk(x, y, type, val) {
+  if (chunks.length > 260) { collectValue({ type, val, x, y }); return; }
+  chunks.push({
+    x, y, type, val,
+    vx: rnd(-380, -80), vy: rnd(-420, -180),
+    gy: GROUND_Y + rnd(18, 62),
+    state: 'fly', groundT: 0, spin: rnd(0, Math.PI * 2), size: type === 'stone' ? rnd(7, 11) : 12,
+  });
+}
+function rollChunkType() {
+  if (Math.random() < stats.specCh) {
+    const s = ['storm', 'frost', 'magnet'];
+    return s[Math.floor(Math.random() * s.length)];
+  }
+  if (Math.random() < stats.goldCh) return 'gold';
+  return 'stone';
+}
+function spawnChunks(n, x, y) {
+  let specialUsed = false;
+  for (let i = 0; i < n; i++) {
+    let type = rollChunkType();
+    if (type !== 'stone' && type !== 'gold') {
+      if (specialUsed) type = 'stone';
+      specialUsed = true;
+    }
+    const val = type === 'stone' ? depthValue(run.depth) * stats.valueMult : 1;
+    spawnChunk(x + rnd(-10, 10), y + rnd(-10, 10), type, val);
+  }
+}
+function collectValue(ch) {
+  if (ch.type === 'stone') {
+    run.stones += ch.val;
+    sfx.blip();
+  } else if (ch.type === 'gold') {
+    run.gold += 1;
+    sfx.goldb();
+    popup(90, 70, '+1', '#ffd94a', 14);
+    if (lvl('midas')) run.stones += 5 * depthValue(run.depth) * stats.valueMult;
+  } else if (ch.type === 'storm') {
+    sfx.spec();
+    triggerStorm();
+  } else if (ch.type === 'frost') {
+    sfx.frz();
+    frostT = Math.max(frostT, stats.frostDur * 1000);
+    popup(W / 2, 60, '❄ TIME FROZEN!', '#aef4ff', 20);
+  } else if (ch.type === 'magnet') {
+    sfx.mag();
+    magnetT = 5000;
+    popup(W / 2, 60, '🧲 MAGNETIZED!', '#d08bff', 20);
+    for (const c of chunks) if (c.state !== 'collect') c.state = 'collect';
+  }
+}
+
+// ---------- storm ----------
+function triggerStorm() {
+  popup(W / 2, 60, '🌩 STORM!', '#7fd0ff', 20);
+  for (let i = 0; i < stats.bolts; i++) {
+    pendingBolts.push({ delay: i * 320, x: ROCK_CX + rnd(-70, 70) });
+  }
+}
+function fireBolt(x) {
+  if (state !== 'run' && state !== 'ending') return;
+  sfx.zap();
+  shake = Math.max(shake, 12);
+  const y = rnd(260, 420);
+  const pts = [];
+  let bx = x + rnd(-40, 40);
+  for (let py = 0; py <= y; py += 34) { pts.push([bx + rnd(-16, 16), py]); }
+  pts.push([x, y]);
+  bolts.push({ pts, t: 0, life: 200 });
+  burst(x, y, '#7fd0ff', 14, 300);
+  if (state === 'run') {
+    damageRock(stats.dmg * 4, x, y, false);
+    spawnChunks(2, x - 60, y);
+  }
+}
+
+// ---------- mining ----------
+function damageRock(dmg, x, y, showNum = true) {
+  rockHP -= dmg;
+  hitFlash = 1;
+  if (showNum) popup(x + rnd(-14, 14), y - 20, fmt(dmg), '#fff', 15);
+  if (rockHP <= 0) breakLayer();
+}
+function breakLayer() {
+  const t = tierFor(run.depth);
+  sfx.brk();
+  shake = Math.max(shake, 20);
+  burst(ROCK_CX, 360, t.spark, 40, 380);
+  burst(ROCK_CX, 360, t.body[0], 30, 300);
+  const bonus = 8 + run.depth * 2;
+  for (let i = 0; i < bonus; i++) {
+    spawnChunk(ROCK_CX + rnd(-60, 60), rnd(280, 420), Math.random() < stats.goldCh * 1.5 ? 'gold' : 'stone', depthValue(run.depth) * stats.valueMult * 2);
+  }
+  run.depth++;
+  if (lvl('tmine') && state === 'run') {
+    run.timeLeft += 4;
+    popup(W / 2, 105, '+4s', '#7fe08a', 16);
+  }
+  banner = { txt: `LAYER ${run.depth + 1} — ${tierFor(run.depth).name.toUpperCase()}!`, t: 0, life: 1400 };
+  rockMaxHP = rockHPFor(run.depth);
+  rockHP = rockMaxHP;
+  genRock(run.depth);
+}
+function doSwing(source) {
+  if (state !== 'run') return;
+  const auto = source !== 'manual';
+  let dmg = stats.dmg * (auto ? stats.autoPow : 1);
+  const isCrit = Math.random() < stats.crit;
+  const hx = ROCK_CX - 95 + rnd(0, 30), hy = rnd(320, 440);
+  if (isCrit) {
+    dmg *= stats.critMult;
+    sfx.crit();
+    shake = Math.max(shake, 10);
+    popup(hx, hy - 44, 'CRIT!', '#ff9a3c', 19);
+  } else {
+    sfx.clink();
+    shake = Math.max(shake, 3);
+  }
+  if (!auto) { swingT = 0; run.manualSwings++; }
+  const t = tierFor(run.depth);
+  burst(hx, hy, t.spark, isCrit ? 12 : 6, isCrit ? 300 : 200);
+  damageRock(dmg, hx, hy);
+  if (state !== 'run') return; // layer break may have ended things
+  let n = stats.chunks + (isCrit ? stats.splash : 0);
+  spawnChunks(n, hx, hy);
+  if (isCrit && lvl('shock')) {
+    damageRock(stats.dmg * 0.5, hx, hy - 30);
+    if (state === 'run') spawnChunks(1, hx, hy - 30);
+  }
+  if (!auto && lvl('over') && run.manualSwings % 10 === 0) {
+    popup(W / 2, 105, '🔁 OVERDRIVE!', '#8fd0ff', 16);
+    for (let i = 0; i < 3; i++) doSwing('auto');
+  }
+}
+function manualSwing() {
+  if (state !== 'run') return;
+  if (swingT < swingCD) return;
+  doSwing('manual');
+}
+
+// ---------- run flow ----------
+function startRun() {
+  if (state !== 'base') return;
+  run = {
+    stones: 0, gold: 0,
+    depth: lvl('deep'), startDepth: lvl('deep'),
+    pots: Object.assign({}, sv.armed),
+    manualSwings: 0, stormPotT: 8000, timeLeft: 0,
+  };
+  sv.armed = {};
+  stats = calcStats();
+  run.timeLeft = stats.runTime;
+  rockMaxHP = rockHPFor(run.depth);
+  rockHP = rockMaxHP;
+  genRock(run.depth);
+  chunks = []; bolts = []; pendingBolts = [];
+  frostT = 0; magnetT = 0; autoAcc = 0;
+  state = 'run';
+  banner = { txt: 'MINE!', t: 0, life: 900 };
+  sfx.buy();
+  closePanels();
+  updateBars();
+  save();
+}
+function endRun() {
+  state = 'ending';
+  endingT = 0;
+  sfx.horn();
+  for (const c of chunks) c.state = 'collect';
+  pendingBolts = [];
+}
+function finishRun() {
+  state = 'results';
+  sv.stones += run.stones;
+  sv.gold += run.gold;
+  sv.lifeStones += run.stones;
+  sv.runs++;
+  const depthReached = run.depth + 1;
+  const newBest = depthReached > sv.bestDepth;
+  if (newBest) sv.bestDepth = depthReached;
+  save();
+  document.getElementById('resultRows').innerHTML =
+    `<div class="rrow">🪨 Stones mined: <b>${fmt(run.stones)}</b></div>` +
+    `<div class="rrow">🪙 Gold found: <b>${fmt(run.gold)}</b></div>` +
+    `<div class="rrow">⬇ Layer reached: <b>${depthReached}</b> (${tierFor(run.depth).name})</div>` +
+    (newBest ? `<div class="newbest">★ NEW BEST LAYER! ★</div>` : '');
+  document.getElementById('results').classList.add('open');
+  updateBars();
+}
+
+// ---------- update ----------
+function update(dt) {
+  elapsed += dt;
+  swingT += dt;
+  if (hitFlash > 0) hitFlash -= dt / 100;
+  if (shake > 0) shake = Math.max(0, shake - dt / 28);
+  if (magnetT > 0) magnetT -= dt;
+  if (banner) { banner.t += dt; if (banner.t > banner.life) banner = null; }
+
+  if (state === 'run') {
+    stats = calcStats();
+    swingCD = stats.cooldown;
+    if (frostT > 0) frostT -= dt;
+    else run.timeLeft -= dt / 1000;
+
+    if (stats.autoRate > 0) {
+      autoAcc += stats.autoRate * dt / 1000;
+      while (autoAcc >= 1) { autoAcc--; doSwing('auto'); }
+    }
+    if (run.pots.storm) {
+      run.stormPotT -= dt;
+      if (run.stormPotT <= 0) { run.stormPotT = 8000; triggerStorm(); }
+    }
+    if (run.timeLeft <= 0 && frostT <= 0) endRun();
+  }
+  if (state === 'ending') {
+    endingT += dt;
+    if (endingT > 1100) finishRun();
+  }
+
+  for (let i = pendingBolts.length - 1; i >= 0; i--) {
+    pendingBolts[i].delay -= dt;
+    if (pendingBolts[i].delay <= 0) { fireBolt(pendingBolts[i].x); pendingBolts.splice(i, 1); }
+  }
+  for (let i = bolts.length - 1; i >= 0; i--) {
+    bolts[i].t += dt;
+    if (bolts[i].t > bolts[i].life) bolts.splice(i, 1);
+  }
+
+  for (let i = chunks.length - 1; i >= 0; i--) {
+    const c = chunks[i];
+    if (c.state === 'fly') {
+      c.vy += 1400 * dt / 1000;
+      c.x += c.vx * dt / 1000;
+      c.y += c.vy * dt / 1000;
+      c.spin += dt / 150;
+      if (c.x < 20) { c.x = 20; c.vx = Math.abs(c.vx) * 0.5; }
+      if (c.y >= c.gy) {
+        c.y = c.gy;
+        if (Math.abs(c.vy) > 130) { c.vy = -c.vy * 0.4; c.vx *= 0.6; }
+        else { c.state = 'ground'; c.groundT = 0; }
+      }
+      if (magnetT > 0) c.state = 'collect';
+    } else if (c.state === 'ground') {
+      c.groundT += dt;
+      if (magnetT > 0 || c.groundT > stats.collectDelay) c.state = 'collect';
+    } else { // collect: fly to HUD counter
+      const tx = c.type === 'gold' ? 60 : 60, ty = c.type === 'gold' ? 64 : 32;
+      const dx = tx - c.x, dy = ty - c.y;
+      const d = Math.hypot(dx, dy);
+      const sp = 900 + (c.collectV = (c.collectV || 0) + 2600 * dt / 1000);
+      if (d < sp * dt / 1000 + 14) {
+        collectValue(c);
+        chunks.splice(i, 1);
+        continue;
+      }
+      c.x += dx / d * sp * dt / 1000;
+      c.y += dy / d * sp * dt / 1000;
+    }
+  }
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.t += dt;
+    if (p.t > p.life) { particles.splice(i, 1); continue; }
+    p.vy += 900 * dt / 1000;
+    p.x += p.vx * dt / 1000;
+    p.y += p.vy * dt / 1000;
+  }
+  for (let i = popups.length - 1; i >= 0; i--) {
+    const p = popups[i];
+    p.t += dt;
+    p.y -= 40 * dt / 1000;
+    if (p.t > p.life) popups.splice(i, 1);
+  }
+}
+
+// ---------- drawing ----------
+function px(x, y, w, h, color) { ctx.fillStyle = color; ctx.fillRect(Math.round(x), Math.round(y), w, h); }
+
+function drawBackground() {
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#12101c');
+  g.addColorStop(0.7, '#1a1724');
+  g.addColorStop(1, '#221d2b');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  // distant rock silhouettes
+  ctx.fillStyle = '#191622';
+  for (let i = 0; i < 6; i++) {
+    const bx = i * 180 + 40, bh = 120 + (i * 53 % 90);
+    ctx.beginPath();
+    ctx.moveTo(bx - 70, GROUND_Y);
+    ctx.lineTo(bx, GROUND_Y - bh);
+    ctx.lineTo(bx + 80, GROUND_Y);
+    ctx.fill();
+  }
+  // stalactites
+  ctx.fillStyle = '#161320';
+  for (let i = 0; i < 9; i++) {
+    const sx = i * 115 + 30, sl = 26 + (i * 37 % 44);
+    ctx.beginPath();
+    ctx.moveTo(sx - 14, 0); ctx.lineTo(sx, sl); ctx.lineTo(sx + 14, 0);
+    ctx.fill();
+  }
+  // lanterns
+  for (const lx of [150, 810]) {
+    px(lx - 1, 0, 2, 56, '#3a3428');
+    const flick = 0.85 + 0.15 * Math.sin(elapsed / 300 + lx);
+    ctx.fillStyle = `rgba(255,190,80,${0.13 * flick})`;
+    ctx.beginPath(); ctx.arc(lx, 66, 46, 0, Math.PI * 2); ctx.fill();
+    px(lx - 7, 56, 14, 18, '#4a4032');
+    px(lx - 4, 60, 8, 10, `rgba(255,210,110,${flick})`);
+  }
+  // ground
+  px(0, GROUND_Y, W, H - GROUND_Y, '#2e2836');
+  px(0, GROUND_Y, W, 6, '#3d3548');
+  ctx.fillStyle = '#262130';
+  for (let i = 0; i < 14; i++) px((i * 173 + 40) % W, GROUND_Y + 20 + (i * 67 % 56), 26, 8, '#262130');
+  // little ground crystals
+  for (const [cx2, col] of [[80, '#7fd0ff'], [880, '#c99aff'], [340, '#7fe08a']]) {
+    ctx.fillStyle = col;
+    ctx.globalAlpha = 0.7 + 0.3 * Math.sin(elapsed / 500 + cx2);
+    ctx.beginPath();
+    ctx.moveTo(cx2 - 7, GROUND_Y); ctx.lineTo(cx2, GROUND_Y - 16); ctx.lineTo(cx2 + 7, GROUND_Y);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawRock() {
+  const t = tierFor(run.depth);
+  const rows = rockCells.length;
+  const topY = GROUND_Y - rows * CELL;
+  for (let r = 0; r < rows; r++) {
+    const row = rockCells[r];
+    for (const cell of row) {
+      const x = ROCK_CX + cell.c * CELL - CELL / 2;
+      const y = topY + r * CELL;
+      const edge = cell === row[0] || cell === row[row.length - 1] || r === 0;
+      ctx.fillStyle = edge ? t.edge : t.body[cell.shade];
+      ctx.fillRect(x, y, CELL, CELL);
+      if (cell.spark && !edge) {
+        const tw = 0.5 + 0.5 * Math.sin(elapsed / 400 + cell.c * 3 + r);
+        ctx.fillStyle = t.spark;
+        ctx.globalAlpha = 0.4 + 0.6 * tw;
+        ctx.fillRect(x + 3, y + 3, 6, 6);
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+  // cracks based on damage
+  const frac = rockHP / rockMaxHP;
+  ctx.strokeStyle = 'rgba(10,8,14,0.85)';
+  ctx.lineWidth = 3;
+  const crackCount = frac < 0.33 ? 3 : frac < 0.66 ? 2 : frac < 0.95 ? 1 : 0;
+  for (let i = 0; i < crackCount; i++) {
+    const rand = mulberry(run.depth * 31 + i * 101);
+    ctx.beginPath();
+    let cx2 = ROCK_CX + (rand() - 0.5) * 120, cy = topY + 40 + rand() * 60;
+    ctx.moveTo(cx2, cy);
+    for (let s = 0; s < 5; s++) {
+      cx2 += (rand() - 0.5) * 56;
+      cy += 34 + rand() * 26;
+      ctx.lineTo(cx2, cy);
+    }
+    ctx.stroke();
+  }
+  if (hitFlash > 0) {
+    ctx.fillStyle = `rgba(255,255,255,${hitFlash * 0.25})`;
+    for (let r = 0; r < rows; r++) {
+      const row = rockCells[r];
+      const x0 = ROCK_CX + row[0].c * CELL - CELL / 2;
+      ctx.fillRect(x0, topY + r * CELL, row.length * CELL, CELL);
+    }
+  }
+  // HP bar
+  if (state === 'run' || state === 'ending') {
+    const bw = 200, bx = ROCK_CX - bw / 2, by = topY - 26;
+    px(bx - 2, by - 2, bw + 4, 16, '#0b0b10');
+    px(bx, by, bw, 12, '#33293d');
+    px(bx, by, Math.max(0, bw * rockHP / rockMaxHP), 12, t.spark);
+    ctx.fillStyle = '#e8ecf5';
+    ctx.font = 'bold 12px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${t.name.toUpperCase()} — LAYER ${run.depth + 1}`, ROCK_CX, by - 8);
+  }
+}
+
+function drawMiner() {
+  const c = charDef();
+  const pals = {
+    moe:   { hat: '#e8b64a', shirt: '#3a6ea5', pants: '#4a4256', skin: '#e8b48c' },
+    pearl: { hat: '#c04a4a', shirt: '#7a5aa0', pants: '#3a3448', skin: '#e8c49c' },
+    gus:   { hat: '#6d727c', shirt: '#565b66', pants: '#3c414c', skin: '#9aa0ab' },
+    nova:  { hat: '#5a4a8a', shirt: '#2c4a6e', pants: '#2a2438', skin: '#d8b0e8' },
+  };
+  const pal = pals[c.id] || pals.moe;
+  const mx = 430, my = GROUND_Y;
+  const bob = state === 'run' ? 0 : Math.sin(elapsed / 400) * 2;
+  const striking = swingT < 130;
+  ctx.save();
+  ctx.translate(mx, my + bob);
+  // legs
+  px(-10, -22, 8, 22, pal.pants);
+  px(2, -22, 8, 22, pal.pants);
+  // body
+  px(-12, -52, 24, 30, pal.shirt);
+  // head
+  px(-9, -74, 18, 22, pal.skin);
+  // helmet + lamp
+  px(-11, -80, 22, 10, pal.hat);
+  px(6, -78, 6, 6, '#fff2b0');
+  ctx.fillStyle = 'rgba(255,240,170,0.12)';
+  ctx.beginPath(); ctx.moveTo(10, -75); ctx.lineTo(90, -95); ctx.lineTo(90, -55); ctx.fill();
+  // arm + pickaxe
+  ctx.save();
+  ctx.translate(8, -46);
+  ctx.rotate(striking ? 0.9 : -0.8 + Math.sin(elapsed / 400) * 0.06);
+  px(0, -3, 26, 6, pal.skin);                    // arm
+  px(24, -26, 5, 30, '#7a5a38');                 // handle
+  px(16, -32, 22, 7, '#b9c8e0');                 // pick head
+  ctx.restore();
+  ctx.restore();
+}
+
+function drawDrones() {
+  if (!lvl('auto')) return;
+  const n = lvl('twin') ? 2 : 1;
+  for (let i = 0; i < n; i++) {
+    const a = elapsed / 600 + i * Math.PI;
+    const dx = ROCK_CX - 150 + Math.sin(a) * 40;
+    const dy = 250 + Math.cos(a * 1.3) * 30 + i * 46;
+    px(dx - 8, dy - 6, 16, 12, '#4a5268');
+    px(dx - 5, dy - 3, 10, 6, '#7fd0ff');
+    px(dx - 11, dy - 9, 22, 2, '#6a7490');
+    const blink = Math.sin(elapsed / 200 + i * 2) > 0.4;
+    if (blink) px(dx + 5, dy - 6, 3, 3, '#ff6a5a');
+  }
+}
+
+function drawChunks() {
+  for (const c of chunks) {
+    ctx.save();
+    ctx.translate(c.x, c.y);
+    ctx.rotate(c.state === 'fly' ? c.spin : 0);
+    const col = CHUNK_COLORS[c.type];
+    if (c.type !== 'stone' && c.type !== 'gold') {
+      ctx.shadowColor = col;
+      ctx.shadowBlur = 10 + 5 * Math.sin(elapsed / 150);
+    }
+    ctx.fillStyle = col;
+    if (c.type === 'gold') {
+      ctx.fillRect(-6, -5, 12, 10);
+      ctx.fillStyle = '#fff2b0';
+      ctx.fillRect(-3, -3, 3, 3);
+    } else if (c.type === 'stone') {
+      ctx.fillRect(-c.size / 2, -c.size / 2, c.size, c.size);
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.fillRect(-c.size / 2, -c.size / 2, c.size / 2, c.size / 2);
+    } else {
+      // special ore: diamond
+      ctx.beginPath();
+      ctx.moveTo(0, -9); ctx.lineTo(8, 0); ctx.lineTo(0, 9); ctx.lineTo(-8, 0);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+function drawEffects() {
+  for (const b of bolts) {
+    const a = 1 - b.t / b.life;
+    ctx.strokeStyle = `rgba(190,230,255,${a})`;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(b.pts[0][0], b.pts[0][1]);
+    for (const [bx, by] of b.pts) ctx.lineTo(bx, by);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(127,208,255,${a * 0.5})`;
+    ctx.lineWidth = 9;
+    ctx.stroke();
+  }
+  for (const p of particles) {
+    ctx.globalAlpha = 1 - p.t / p.life;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+  }
+  ctx.globalAlpha = 1;
+  if (magnetT > 0) {
+    ctx.strokeStyle = `rgba(208,139,255,${0.3 + 0.2 * Math.sin(elapsed / 120)})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(60, 40, 30 + 8 * Math.sin(elapsed / 200), 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
+function drawPopups() {
+  ctx.textAlign = 'center';
+  for (const p of popups) {
+    const a = 1 - Math.pow(p.t / p.life, 2);
+    ctx.globalAlpha = a;
+    ctx.font = `bold ${p.size}px Courier New`;
+    ctx.fillStyle = '#0b0b10';
+    ctx.fillText(p.txt, p.x + 2, p.y + 2);
+    ctx.fillStyle = p.color;
+    ctx.fillText(p.txt, p.x, p.y);
+  }
+  ctx.globalAlpha = 1;
+  if (banner) {
+    const k = Math.min(1, banner.t / 150);
+    const a = banner.t > banner.life - 300 ? (banner.life - banner.t) / 300 : 1;
+    ctx.globalAlpha = a;
+    ctx.font = `bold ${Math.round(34 * k)}px Courier New`;
+    ctx.fillStyle = '#0b0b10';
+    ctx.fillText(banner.txt, W / 2 + 3, 173);
+    ctx.fillStyle = '#ffd94a';
+    ctx.fillText(banner.txt, W / 2, 170);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawHUD() {
+  // stones + gold counters
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 20px Courier New';
+  const stoneShow = state === 'run' || state === 'ending' ? run.stones : sv.stones;
+  const goldShow = state === 'run' || state === 'ending' ? run.gold : sv.gold;
+  ctx.fillStyle = '#0b0b10';
+  ctx.fillText(`🪨 ${fmt(stoneShow)}`, 22, 40);
+  ctx.fillText(`🪙 ${fmt(goldShow)}`, 22, 72);
+  ctx.fillStyle = '#e8ecf5';
+  ctx.fillText(`🪨 ${fmt(stoneShow)}`, 20, 38);
+  ctx.fillStyle = '#ffd94a';
+  ctx.fillText(`🪙 ${fmt(goldShow)}`, 20, 70);
+  if (state === 'run' && (run.stones !== sv.stones)) {
+    ctx.font = 'bold 12px Courier New';
+    ctx.fillStyle = '#8fa0c0';
+    ctx.fillText('THIS RUN', 20, 90);
+  }
+
+  // right side
+  ctx.textAlign = 'right';
+  ctx.font = 'bold 16px Courier New';
+  ctx.fillStyle = '#8fa0c0';
+  if (state === 'base' || state === 'results') {
+    ctx.fillText(`BEST LAYER ${sv.bestDepth || '—'}`, W - 20, 36);
+    ctx.fillText(`RUNS ${sv.runs}`, W - 20, 58);
+  }
+
+  // timer
+  if (state === 'run' || state === 'ending') {
+    const frozen = frostT > 0;
+    const bw = 320, bx = (W - bw) / 2, by = 18;
+    px(bx - 3, by - 3, bw + 6, 24, '#0b0b10');
+    px(bx, by, bw, 18, '#33293d');
+    const frac = clamp(run.timeLeft / stats.runTime, 0, 1);
+    px(bx, by, bw * frac, 18, frozen ? '#7fd0ff' : frac < 0.25 ? '#e05a4a' : '#e8b64a');
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 15px Courier New';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(frozen ? `❄ ${Math.ceil(run.timeLeft)}s` : `${Math.ceil(Math.max(0, run.timeLeft))}s`, W / 2, by + 14);
+  }
+  if (frostT > 0) {
+    ctx.strokeStyle = `rgba(150,220,255,${0.25 + 0.1 * Math.sin(elapsed / 200)})`;
+    ctx.lineWidth = 10;
+    ctx.strokeRect(5, 5, W - 10, H - 10);
+  }
+
+  // base state helper text
+  if (state === 'base') {
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 34px Courier New';
+    ctx.fillStyle = '#0b0b10';
+    ctx.fillText('⛏ ORE RUSH', W / 2 + 3, 103);
+    ctx.fillStyle = '#e8b64a';
+    ctx.fillText('⛏ ORE RUSH', W / 2, 100);
+    ctx.font = 'bold 14px Courier New';
+    ctx.fillStyle = '#8fa0c0';
+    if (sv.runs === 0) {
+      ctx.fillText('CLICK / TAP / SPACE TO MINE THE ROCK', W / 2, 130);
+      ctx.fillText('COLLECT STONES 🪨 AND SPEND THEM ON SKILLS', W / 2, 150);
+    }
+  }
+}
+
+function draw() {
+  ctx.save();
+  if (shake > 0) ctx.translate(rnd(-shake, shake), rnd(-shake, shake));
+  drawBackground();
+  drawRock();
+  drawDrones();
+  drawMiner();
+  drawEffects();
+  drawChunks();
+  drawPopups();
+  ctx.restore();
+  drawHUD();
+}
+
+// ---------- UI panels ----------
+const $ = id => document.getElementById(id);
+function closePanels() {
+  for (const p of document.querySelectorAll('.panel')) p.classList.remove('open');
+}
+function updateBars() {
+  $('startBtn').style.display = state === 'base' ? '' : 'none';
+  $('skillsBtn').style.display = state === 'base' ? '' : 'none';
+  $('shopBtn').style.display = state === 'base' ? '' : 'none';
+  const row = $('potionRow');
+  row.innerHTML = '';
+  if (state === 'base') {
+    for (const pt of POTIONS) {
+      if (sv.armed[pt.id]) {
+        const d = document.createElement('div');
+        d.className = 'chip';
+        d.textContent = `${pt.icon} ${pt.name.split(' ')[0]} ARMED`;
+        row.appendChild(d);
+      }
+    }
+  }
+}
+
+function renderSkills() {
+  $('skillWallet').textContent = `🪨 ${fmt(sv.stones)}`;
+  const grid = $('skillGrid');
+  grid.innerHTML = '';
+  for (let b = 0; b < 4; b++) {
+    const col = document.createElement('div');
+    col.className = 'branch';
+    col.innerHTML = `<h3>${BRANCH_NAMES[b]}</h3>`;
+    const nodes = SKILLS.filter(s => s.br === b).sort((a, z) => a.tier - z.tier);
+    for (const s of nodes) {
+      const L = lvl(s.id);
+      const prev = nodes.find(n => n.tier === s.tier - 1);
+      const locked = s.tier > 0 && prev && lvl(prev.id) === 0;
+      const maxed = L >= s.max;
+      const cost = skillCost(s);
+      const div = document.createElement('div');
+      div.className = 'node' + (locked ? ' locked' : '') + (maxed ? ' maxed' : '');
+      div.innerHTML =
+        `<div class="nname">${s.icon} ${s.name} <span class="lvl">${L}/${s.max}</span></div>` +
+        `<div class="ndesc">${locked ? `Requires ${prev.name}` : s.desc(L)}</div>` +
+        `<button class="btn ${!locked && !maxed && sv.stones >= cost ? 'afford' : ''}" data-skill="${s.id}" ${locked || maxed ? 'disabled' : ''}>` +
+        (maxed ? 'MAXED' : `${fmt(cost)} 🪨`) + `</button>`;
+      col.appendChild(div);
+    }
+    grid.appendChild(col);
+  }
+}
+
+let shopTab = 'picks';
+function renderShop() {
+  $('shopWallet').textContent = `🪙 ${fmt(sv.gold)}`;
+  for (const t of document.querySelectorAll('.tab'))
+    t.classList.toggle('active', t.dataset.tab === shopTab);
+  const grid = $('shopGrid');
+  grid.innerHTML = '';
+  const items = shopTab === 'picks' ? PICKS : shopTab === 'chars' ? CHARS : POTIONS;
+  for (const it of items) {
+    const div = document.createElement('div');
+    let btn;
+    if (shopTab === 'potions') {
+      const armed = sv.armed[it.id];
+      btn = armed
+        ? `<button class="btn" disabled>ARMED ✓</button>`
+        : `<button class="btn ${sv.gold >= it.cost ? 'afford' : ''}" data-pot="${it.id}">${it.cost} 🪙</button>`;
+      div.className = 'card' + (armed ? ' equipped' : '');
+    } else {
+      const ownList = shopTab === 'picks' ? sv.picks : sv.chars;
+      const equipped = (shopTab === 'picks' ? sv.pick : sv.char) === it.id;
+      const owned = ownList.includes(it.id);
+      div.className = 'card' + (equipped ? ' equipped' : '');
+      btn = equipped
+        ? `<button class="btn" disabled>EQUIPPED ✓</button>`
+        : owned
+          ? `<button class="btn afford" data-equip="${shopTab}:${it.id}">EQUIP</button>`
+          : `<button class="btn ${sv.gold >= it.cost ? 'afford' : ''}" data-buy="${shopTab}:${it.id}">${it.cost} 🪙</button>`;
+    }
+    div.innerHTML =
+      `<div class="cicon">${it.icon}</div>` +
+      `<div class="cname">${it.name}</div>` +
+      `<div class="cstat">${it.stat}</div>` + btn;
+    grid.appendChild(div);
+  }
+}
+
+// ---------- UI events ----------
+$('startBtn').addEventListener('click', startRun);
+$('skillsBtn').addEventListener('click', () => { closePanels(); renderSkills(); $('skills').classList.add('open'); });
+$('shopBtn').addEventListener('click', () => { closePanels(); renderShop(); $('shop').classList.add('open'); });
+$('muteBtn').addEventListener('click', () => {
+  sv.muted = !sv.muted;
+  $('muteBtn').textContent = sv.muted ? '🔇' : '🔊';
+  save();
+});
+$('muteBtn').textContent = sv.muted ? '🔇' : '🔊';
+$('continueBtn').addEventListener('click', () => {
+  closePanels();
+  state = 'base';
+  chunks = [];
+  updateBars();
+});
+for (const b of document.querySelectorAll('[data-close]'))
+  b.addEventListener('click', closePanels);
+for (const t of document.querySelectorAll('.tab'))
+  t.addEventListener('click', () => { shopTab = t.dataset.tab; renderShop(); });
+
+$('skills').addEventListener('click', e => {
+  const id = e.target.dataset && e.target.dataset.skill;
+  if (!id) return;
+  const s = SKILLS.find(x => x.id === id);
+  const cost = skillCost(s);
+  if (lvl(id) >= s.max || sv.stones < cost) { sfx.err(); return; }
+  sv.stones -= cost;
+  sv.skills[id] = lvl(id) + 1;
+  sfx.buy();
+  save();
+  renderSkills();
+});
+$('shop').addEventListener('click', e => {
+  const d = e.target.dataset || {};
+  if (d.pot) {
+    const it = POTIONS.find(x => x.id === d.pot);
+    if (sv.gold < it.cost || sv.armed[it.id]) { sfx.err(); return; }
+    sv.gold -= it.cost;
+    sv.armed[it.id] = true;
+    sfx.buy(); save(); renderShop(); updateBars();
+  } else if (d.buy) {
+    const [kind, id] = d.buy.split(':');
+    const it = (kind === 'picks' ? PICKS : CHARS).find(x => x.id === id);
+    if (sv.gold < it.cost) { sfx.err(); return; }
+    sv.gold -= it.cost;
+    if (kind === 'picks') { sv.picks.push(id); sv.pick = id; }
+    else { sv.chars.push(id); sv.char = id; }
+    sfx.buy(); save(); renderShop();
+  } else if (d.equip) {
+    const [kind, id] = d.equip.split(':');
+    if (kind === 'picks') sv.pick = id; else sv.char = id;
+    sfx.buy(); save(); renderShop();
+  }
+});
+
+// ---------- input ----------
+canvas.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  audio();
+  manualSwing();
+});
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); audio(); manualSwing(); }
+  if (e.code === 'Enter' && state === 'base') startRun();
+  if (e.code === 'Escape') closePanels();
+});
+
+// ---------- scaling ----------
+const wrap = $('wrap');
+function fit() {
+  const s = Math.min(innerWidth / W, innerHeight / H);
+  wrap.style.transform = `translate(-50%,-50%) scale(${s})`;
+}
+addEventListener('resize', fit);
+fit();
+
+// ---------- boot ----------
+run.pots = {};
+stats = calcStats();
+genRock(0);
+rockMaxHP = rockHPFor(0);
+rockHP = rockMaxHP;
+updateBars();
+window.addEventListener('beforeunload', save);
+
+// tiny debug hook
+window.ORE_DEBUG = { give(st, g) { sv.stones += st || 0; sv.gold += g || 0; save(); } };
+
+function tick(now) {
+  const dt = Math.min(50, now - lastTime);
+  lastTime = now;
+  update(dt);
+  draw();
+}
+function loop(now) {
+  tick(now);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+// rAF pauses in background tabs; keep auto-miners and the run clock going
+setInterval(() => { if (document.hidden) tick(performance.now()); }, 50);
+
+})();
+</script>
+</body>
+</html>
