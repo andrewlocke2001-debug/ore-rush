@@ -387,7 +387,7 @@ function calcStats() {
   const p = pickDef(), c = charDef();
   return {
     dmg: (3 + 2 * lvl('sharp')) * p.dmg * c.dmg * (run.pots.power ? 2 : 1),
-    cooldown: Math.max(200, 320 * Math.pow(0.95, lvl('swift')) * c.cd),
+    cooldown: Math.max(45, 110 * Math.pow(0.95, lvl('swift')) * c.cd),
     crit: clamp(0.05 + 0.04 * lvl('keen') + p.crit, 0, 0.6),
     critMult: 2 + 0.4 * lvl('heavy'),
     autoRate: lvl('auto') ? (0.3 + 0.15 * (lvl('auto') - 1)) * (lvl('twin') ? 2 : 1) : 0,
