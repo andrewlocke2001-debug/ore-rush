@@ -59,7 +59,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
     pointer-events: none;
   }
   #bottombar .btn { pointer-events: auto; }
@@ -84,8 +84,8 @@
     position: absolute;
     left: 50%; top: 50%;
     transform: translate(-50%,-50%);
-    width: 820px;
-    max-height: 540px;
+    width: 910px;
+    max-height: 545px;
     background: #171a23;
     border: 4px solid #3a4152;
     box-shadow: 0 8px 0 #000, 0 0 60px rgba(0,0,0,.8);
@@ -107,28 +107,28 @@
   .pbody { overflow-y: auto; padding: 14px; }
   .pbody::-webkit-scrollbar { width: 10px; }
   .pbody::-webkit-scrollbar-thumb { background: #3a4152; }
-  .branches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .branches { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
   .branch h3 {
     margin: 0 0 8px;
-    font-size: 13px;
-    letter-spacing: 2px;
+    font-size: 12px;
+    letter-spacing: 1px;
     text-align: center;
-    padding: 5px;
+    padding: 5px 2px;
     background: #262b3b;
     border: 2px solid #3a4152;
   }
   .node {
     background: #1e2230;
     border: 2px solid #384056;
-    padding: 8px;
+    padding: 7px;
     margin-bottom: 8px;
   }
   .node.locked { opacity: .38; }
   .node.maxed { border-color: #b8862c; }
-  .nname { font-size: 12px; font-weight: bold; letter-spacing: .5px; }
+  .nname { font-size: 11px; font-weight: bold; letter-spacing: .5px; }
   .nname .lvl { float: right; color: #8fa0c0; }
-  .ndesc { font-size: 11px; color: #9aa6bd; margin: 4px 0 6px; min-height: 24px; }
-  .node .btn { width: 100%; font-size: 11px; padding: 6px; }
+  .ndesc { font-size: 10px; color: #9aa6bd; margin: 4px 0 6px; min-height: 26px; }
+  .node .btn { width: 100%; font-size: 10px; padding: 5px 2px; }
   .node .btn.afford { background: #2c5a34; border-color: #4a8a56; }
   .node .btn.afford:hover { background: #367042; }
   .tabs { display: flex; gap: 8px; padding: 12px 14px 0; }
@@ -158,6 +158,20 @@
   .card .cstat { font-size: 11px; color: #9aa6bd; margin: 6px 0; min-height: 30px; }
   .card .btn { width: 100%; font-size: 11px; padding: 6px; }
   .card .btn.afford { background: #6b5a1e; border-color: #b8862c; }
+  .achrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #1e2230;
+    border: 2px solid #384056;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+  }
+  .achrow.done { border-color: #b8862c; }
+  .achrow .aicon { font-size: 22px; width: 30px; text-align: center; }
+  .achrow .aname { font-weight: bold; font-size: 13px; letter-spacing: 1px; }
+  .achrow .adesc { font-size: 11px; color: #9aa6bd; }
+  .achrow .areward { margin-left: auto; font-weight: bold; font-size: 13px; color: #ffd94a; white-space: nowrap; }
   #results .pbody { text-align: center; padding: 26px; }
   #results h1 { margin: 0 0 18px; font-size: 30px; letter-spacing: 3px; color: #e8b64a; }
   .rrow { font-size: 18px; margin: 10px 0; letter-spacing: 1px; }
@@ -174,6 +188,7 @@
     <button class="btn" id="skillsBtn">⛏ Skills</button>
     <button class="btn big" id="startBtn">Start Run</button>
     <button class="btn" id="shopBtn">🪙 Shop</button>
+    <button class="btn" id="awardsBtn">🏆</button>
     <button class="btn" id="muteBtn">🔊</button>
   </div>
 
@@ -200,6 +215,15 @@
     <div class="pbody"><div class="cards" id="shopGrid"></div></div>
   </div>
 
+  <div class="panel" id="awards">
+    <div class="phead">
+      <h2>🏆 AWARDS</h2>
+      <span class="wallet" id="awardsCount"></span>
+      <button class="btn" data-close>✕</button>
+    </div>
+    <div class="pbody" id="achList"></div>
+  </div>
+
   <div class="panel" id="results">
     <div class="pbody">
       <h1>SHIFT OVER</h1>
@@ -220,6 +244,7 @@ const GROUND_Y = 520;
 const ROCK_CX = 600;
 const CELL = 12;
 const SAVE_KEY = 'orerush_save';
+const SAVE_V = 2;
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -227,52 +252,76 @@ const ctx = canvas.getContext('2d');
 // ---------- data: skills ----------
 const SKILLS = [
   // POWER
-  { id:'sharp',   br:0, tier:0, icon:'⛏', name:'Sharp Edge',   max:10, base:10,   gr:1.6,  desc:l=>`+2 damage per level (now +${2*l})` },
-  { id:'swift',   br:0, tier:1, icon:'💨', name:'Swift Arms',   max:6,  base:60,   gr:1.6,  desc:l=>`-8% swing cooldown per level` },
-  { id:'keen',    br:0, tier:2, icon:'🎯', name:'Keen Eye',     max:8,  base:250,  gr:1.65, desc:l=>`+4% crit chance per level` },
-  { id:'heavy',   br:0, tier:3, icon:'💥', name:'Heavy Blows',  max:6,  base:1200, gr:1.7,  desc:l=>`+50% crit damage per level` },
-  { id:'shock',   br:0, tier:4, icon:'🌊', name:'Shockwave',    max:1,  base:8000, gr:1,    desc:l=>`Crits strike a second time for 50%` },
+  { id:'sharp',   br:0, tier:0, icon:'⛏', name:'Sharp Edge',   max:12, base:12,    gr:1.9,  desc:l=>`+2 damage per level (now +${2*l})` },
+  { id:'swift',   br:0, tier:1, icon:'💨', name:'Swift Arms',   max:8,  base:90,    gr:1.95, desc:l=>`-5% swing cooldown per level` },
+  { id:'keen',    br:0, tier:2, icon:'🎯', name:'Keen Eye',     max:8,  base:600,   gr:2.0,  desc:l=>`+4% crit chance per level` },
+  { id:'heavy',   br:0, tier:3, icon:'💥', name:'Heavy Blows',  max:8,  base:4000,  gr:2.0,  desc:l=>`+40% crit damage per level` },
+  { id:'shock',   br:0, tier:4, icon:'🌊', name:'Shockwave',    max:1,  base:50000, gr:1,    desc:l=>`Crits strike a second time for 50%` },
   // AUTOMATION
-  { id:'auto',    br:1, tier:0, icon:'🤖', name:'Auto-Miner',   max:8,  base:15,   gr:1.7,  desc:l=>`A drone mines for you (+0.2/s per level)` },
-  { id:'dronepow',br:1, tier:1, icon:'🛠', name:'Drone Power',  max:6,  base:70,   gr:1.6,  desc:l=>`Drone hits +10% of pick damage per level` },
-  { id:'collect', br:1, tier:2, icon:'🧲', name:'Collector Bot',max:5,  base:220,  gr:1.65, desc:l=>`Chunks are gathered faster` },
-  { id:'over',    br:1, tier:3, icon:'🔁', name:'Overdrive',    max:1,  base:1500, gr:1,    desc:l=>`Every 10th swing triggers 3 drone strikes` },
-  { id:'twin',    br:1, tier:4, icon:'👯', name:'Twin Drones',  max:1,  base:9000, gr:1,    desc:l=>`Double your drone mining speed` },
+  { id:'auto',    br:1, tier:0, icon:'🤖', name:'Auto-Miner',   max:8,  base:30,    gr:2.0,  desc:l=>`A drone mines for you (+0.15/s per level)` },
+  { id:'dronepow',br:1, tier:1, icon:'🛠', name:'Drone Power',  max:6,  base:250,   gr:2.0,  desc:l=>`Drone hits +10% of pick damage per level` },
+  { id:'collect', br:1, tier:2, icon:'🧲', name:'Collector Bot',max:5,  base:900,   gr:2.0,  desc:l=>`Chunks are gathered faster` },
+  { id:'over',    br:1, tier:3, icon:'🔁', name:'Overdrive',    max:1,  base:6000,  gr:1,    desc:l=>`Every 10th swing triggers 3 drone strikes` },
+  { id:'twin',    br:1, tier:4, icon:'👯', name:'Twin Drones',  max:1,  base:70000, gr:1,    desc:l=>`Double your drone mining speed` },
   // FORTUNE
-  { id:'veins',   br:2, tier:0, icon:'💎', name:'Rich Veins',   max:6,  base:12,   gr:1.75, desc:l=>`+1 chunk per swing (now ${1+l})` },
-  { id:'goldrush',br:2, tier:1, icon:'🪙', name:'Gold Rush',    max:8,  base:65,   gr:1.6,  desc:l=>`+2% gold chunk chance per level` },
-  { id:'lucky',   br:2, tier:2, icon:'🍀', name:'Lucky Strikes',max:6,  base:260,  gr:1.65, desc:l=>`+1.5% special ore chance per level` },
-  { id:'polish',  br:2, tier:3, icon:'✨', name:'Gem Polish',   max:10, base:1000, gr:1.55, desc:l=>`Chunks worth +25% per level` },
-  { id:'midas',   br:2, tier:4, icon:'👑', name:'Midas Touch',  max:1,  base:8500, gr:1,    desc:l=>`Gold chunks also pay out stones` },
+  { id:'veins',   br:2, tier:0, icon:'💎', name:'Rich Veins',   max:6,  base:25,    gr:2.1,  desc:l=>`+1 chunk per swing (now ${1+l})` },
+  { id:'goldrush',br:2, tier:1, icon:'🪙', name:'Gold Rush',    max:8,  base:200,   gr:1.95, desc:l=>`+1.2% gold chunk chance per level` },
+  { id:'lucky',   br:2, tier:2, icon:'🍀', name:'Lucky Strikes',max:6,  base:800,   gr:2.0,  desc:l=>`+1% special ore chance per level` },
+  { id:'polish',  br:2, tier:3, icon:'✨', name:'Gem Polish',   max:12, base:3000,  gr:1.8,  desc:l=>`Chunks worth +20% per level` },
+  { id:'midas',   br:2, tier:4, icon:'👑', name:'Midas Touch',  max:1,  base:55000, gr:1,    desc:l=>`Gold chunks also pay out stones` },
   // TIME & DEPTH
-  { id:'shift',   br:3, tier:0, icon:'⏳', name:'Long Shift',   max:6,  base:14,   gr:1.8,  desc:l=>`+5s run time per level` },
-  { id:'deep',    br:3, tier:1, icon:'⬇', name:'Deep Start',   max:4,  base:120,  gr:1.9,  desc:l=>`Start runs ${l} layer(s) deeper` },
-  { id:'frost',   br:3, tier:2, icon:'❄', name:'Permafrost',   max:4,  base:300,  gr:1.7,  desc:l=>`Frost ore freezes time +2s per level` },
-  { id:'storm',   br:3, tier:3, icon:'🌩', name:'Storm Caller', max:4,  base:1300, gr:1.7,  desc:l=>`+1 lightning bolt per storm ore` },
-  { id:'tmine',   br:3, tier:4, icon:'⏱', name:'Time Miner',   max:1,  base:8000, gr:1,    desc:l=>`Breaking a layer adds +4s to the clock` },
+  { id:'shift',   br:3, tier:0, icon:'⏳', name:'Long Shift',   max:8,  base:30,    gr:2.05, desc:l=>`+3s run time per level` },
+  { id:'deep',    br:3, tier:1, icon:'⬇', name:'Deep Start',   max:5,  base:1500,  gr:2.2,  desc:l=>`Start runs ${l} layer(s) deeper` },
+  { id:'frost',   br:3, tier:2, icon:'❄', name:'Permafrost',   max:4,  base:2500,  gr:2.0,  desc:l=>`Frost ore freezes time +2s per level` },
+  { id:'storm',   br:3, tier:3, icon:'🌩', name:'Storm Caller', max:4,  base:5000,  gr:2.0,  desc:l=>`+1 lightning bolt per storm ore` },
+  { id:'tmine',   br:3, tier:4, icon:'⏱', name:'Time Miner',   max:1,  base:60000, gr:1,    desc:l=>`Breaking a layer adds +3s to the clock` },
+  // MASTERY
+  { id:'gemology',br:4, tier:0, icon:'💠', name:'Gemology',     max:5,  base:60,    gr:2.0,  desc:l=>`+1.5% gem chance (gems = 10x stones)` },
+  { id:'combo',   br:4, tier:1, icon:'🥁', name:'Combo Master', max:5,  base:350,   gr:2.0,  desc:l=>`+10 max combo per level (now ${30+10*l})` },
+  { id:'demo',    br:4, tier:2, icon:'💣', name:'Demolition',   max:4,  base:1200,  gr:2.0,  desc:l=>`Bomb ore explodes +2.5x pick damage per level` },
+  { id:'fury',    br:4, tier:3, icon:'🔥', name:'Fury',         max:4,  base:3500,  gr:2.0,  desc:l=>`Frenzy ore lasts +1s per level` },
+  { id:'jack',    br:4, tier:4, icon:'💰', name:'Jackpot',      max:1,  base:45000, gr:1,    desc:l=>`Golden nuggets give 3x gold` },
 ];
-const BRANCH_NAMES = ['POWER', 'AUTOMATION', 'FORTUNE', 'TIME'];
+const BRANCH_NAMES = ['POWER', 'AUTOMATION', 'FORTUNE', 'TIME', 'MASTERY'];
 
 // ---------- data: shop ----------
 const PICKS = [
   { id:'rusty',   icon:'⛏',  name:'Rusty Pick',   cost:0,    dmg:1,   crit:0,    gold:0,    spec:0,    splash:0, stat:'The old faithful.' },
-  { id:'copper',  icon:'⚒',  name:'Copper Pick',  cost:25,   dmg:1.6, crit:0,    gold:0,    spec:0,    splash:0, stat:'x1.6 damage' },
-  { id:'iron',    icon:'🔨', name:'Iron Pick',    cost:75,   dmg:2.4, crit:.05,  gold:0,    spec:0,    splash:0, stat:'x2.4 damage, +5% crit' },
-  { id:'crystal', icon:'🔮', name:'Crystal Pick', cost:200,  dmg:3.5, crit:0,    gold:0,    spec:.04,  splash:0, stat:'x3.5 damage, +4% special ore' },
-  { id:'molten',  icon:'🔥', name:'Molten Pick',  cost:500,  dmg:5,   crit:0,    gold:0,    spec:0,    splash:2, stat:'x5 damage, crits splash +2 chunks' },
-  { id:'void',    icon:'🌑', name:'Void Pick',    cost:1200, dmg:8,   crit:.10,  gold:.05,  spec:0,    splash:0, stat:'x8 damage, +10% crit, +5% gold' },
+  { id:'copper',  icon:'⚒',  name:'Copper Pick',  cost:40,   dmg:1.6, crit:0,    gold:0,    spec:0,    splash:0, stat:'x1.6 damage' },
+  { id:'iron',    icon:'🔨', name:'Iron Pick',    cost:120,  dmg:2.4, crit:.05,  gold:0,    spec:0,    splash:0, stat:'x2.4 damage, +5% crit' },
+  { id:'crystal', icon:'🔮', name:'Crystal Pick', cost:350,  dmg:3.5, crit:0,    gold:0,    spec:.025, splash:0, stat:'x3.5 damage, +2.5% special ore' },
+  { id:'molten',  icon:'🔥', name:'Molten Pick',  cost:900,  dmg:5,   crit:0,    gold:0,    spec:0,    splash:2, stat:'x5 damage, crits splash +2 chunks' },
+  { id:'void',    icon:'🌑', name:'Void Pick',    cost:2500, dmg:7,   crit:.10,  gold:.02,  spec:0,    splash:0, stat:'x7 damage, +10% crit, +2% gold' },
 ];
 const CHARS = [
-  { id:'moe',   icon:'👷', name:'Miner Moe',       cost:0,   dmg:1,   cd:1,    goldM:1,    specM:1, bolt:0, stat:'Balanced and dependable.' },
-  { id:'pearl', icon:'👩‍🦰', name:'Prospector Pearl',cost:100, dmg:1,   cd:1,    goldM:1.75, specM:1, bolt:0, stat:'x1.75 gold chunk chance' },
-  { id:'gus',   icon:'🗿', name:'Golem Gus',       cost:300, dmg:1.5, cd:1.15, goldM:1,    specM:1, bolt:0, stat:'x1.5 damage, slightly slower' },
-  { id:'nova',  icon:'🧙', name:'Seer Nova',       cost:750, dmg:1,   cd:1,    goldM:1,    specM:2, bolt:1, stat:'x2 special ore chance, +1 bolt' },
+  { id:'moe',   icon:'👷', name:'Miner Moe',       cost:0,    dmg:1,   cd:1,    goldM:1,   specM:1,   bolt:0, stat:'Balanced and dependable.' },
+  { id:'pearl', icon:'👩‍🦰', name:'Prospector Pearl',cost:150,  dmg:1,   cd:1,    goldM:1.6, specM:1,   bolt:0, stat:'x1.6 gold chunk chance' },
+  { id:'gus',   icon:'🗿', name:'Golem Gus',       cost:450,  dmg:1.5, cd:1.15, goldM:1,   specM:1,   bolt:0, stat:'x1.5 damage, slightly slower' },
+  { id:'nova',  icon:'🧙', name:'Seer Nova',       cost:1000, dmg:1,   cd:1,    goldM:1,   specM:1.8, bolt:1, stat:'x1.8 special ore chance, +1 bolt' },
 ];
 const POTIONS = [
-  { id:'power', icon:'🧪', name:'Power Potion', cost:15, stat:'2x damage next run' },
-  { id:'greed', icon:'💰', name:'Greed Potion', cost:15, stat:'2x chunk value next run' },
-  { id:'haste', icon:'⏰', name:'Haste Potion', cost:20, stat:'+20s next run' },
-  { id:'storm', icon:'🌩', name:'Storm Potion', cost:25, stat:'Lightning volley every 8s next run' },
+  { id:'power', icon:'🧪', name:'Power Potion', cost:25, stat:'2x damage next run' },
+  { id:'greed', icon:'💰', name:'Greed Potion', cost:25, stat:'2x chunk value next run' },
+  { id:'haste', icon:'⏰', name:'Haste Potion', cost:30, stat:'+15s next run' },
+  { id:'storm', icon:'🌩', name:'Storm Potion', cost:40, stat:'Lightning volley every 8s next run' },
+];
+
+// ---------- data: achievements ----------
+const ACHS = [
+  { id:'run1',    name:'First Shift',   desc:'Finish a run',                 gold:10 },
+  { id:'runs25',  name:'Regular',       desc:'Finish 25 runs',               gold:40 },
+  { id:'layer5',  name:'Getting Deep',  desc:'Reach layer 5',                gold:15 },
+  { id:'layer10', name:'Spelunker',     desc:'Reach layer 10',               gold:25 },
+  { id:'layer20', name:'Core Driller',  desc:'Reach layer 20',               gold:60 },
+  { id:'layer40', name:'Void Walker',   desc:'Reach layer 40',               gold:150 },
+  { id:'geode',   name:'Geode Hunter',  desc:'Crack open a geode layer',     gold:25 },
+  { id:'combo50', name:'Rhythm Miner',  desc:'Hit a 50 combo',               gold:20 },
+  { id:'st10k',   name:'Stonebroker',   desc:'Mine 10K lifetime stones',     gold:20 },
+  { id:'st1m',    name:'Magnate',       desc:'Mine 1M lifetime stones',      gold:60 },
+  { id:'st100m',  name:'Rock Tycoon',   desc:'Mine 100M lifetime stones',    gold:200 },
+  { id:'picks3',  name:'Collector',     desc:'Own 3 pickaxes',               gold:30 },
+  { id:'chars4',  name:'Full Crew',     desc:'Recruit every miner',          gold:60 },
+  { id:'spec6',   name:'Ore Scholar',   desc:'Trigger all 6 special ores',   gold:30 },
 ];
 
 // ---------- rock palettes ----------
@@ -286,20 +335,27 @@ const TIERS = [
   { name:'Magma',    body:['#5e3a34','#4a2c28','#38201d'], edge:'#1e0f0d', spark:'#ff7a3c' },
   { name:'Void',     body:['#3a3350','#2c2740','#201c30'], edge:'#100e1a', spark:'#ff5ad0' },
 ];
+const GEODE_TIER = { name:'Geode', body:['#4a4456','#3b3646','#2d2936'], edge:'#1c1922', spark:'#ffe9a0' };
 
 // ---------- save ----------
 let sv = {
+  v: SAVE_V,
   stones: 0, gold: 0,
   skills: {},
   picks: ['rusty'], pick: 'rusty',
   chars: ['moe'], char: 'moe',
   armed: {},
+  ach: {}, seen: {},
   bestDepth: 0, runs: 0, lifeStones: 0,
   muted: false,
 };
 try {
   const raw = localStorage.getItem(SAVE_KEY);
-  if (raw) sv = Object.assign(sv, JSON.parse(raw));
+  if (raw) {
+    const old = JSON.parse(raw);
+    if (old.v === SAVE_V) sv = Object.assign(sv, old);
+    else localStorage.setItem(SAVE_KEY + '_v1_backup', raw); // pre-rebalance save archived
+  }
 } catch (e) {}
 function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(sv)); } catch (e) {} }
 
@@ -331,37 +387,44 @@ function calcStats() {
   const p = pickDef(), c = charDef();
   return {
     dmg: (3 + 2 * lvl('sharp')) * p.dmg * c.dmg * (run.pots.power ? 2 : 1),
-    cooldown: 340 * Math.pow(0.92, lvl('swift')) * c.cd,
-    crit: clamp(0.05 + 0.04 * lvl('keen') + p.crit, 0, 0.65),
-    critMult: 2 + 0.5 * lvl('heavy'),
-    autoRate: lvl('auto') ? (0.4 + 0.2 * (lvl('auto') - 1)) * (lvl('twin') ? 2 : 1) : 0,
+    cooldown: Math.max(200, 320 * Math.pow(0.95, lvl('swift')) * c.cd),
+    crit: clamp(0.05 + 0.04 * lvl('keen') + p.crit, 0, 0.6),
+    critMult: 2 + 0.4 * lvl('heavy'),
+    autoRate: lvl('auto') ? (0.3 + 0.15 * (lvl('auto') - 1)) * (lvl('twin') ? 2 : 1) : 0,
     autoPow: 0.5 + 0.1 * lvl('dronepow'),
     collectDelay: Math.max(200, 1100 - 180 * lvl('collect')),
     chunks: 1 + lvl('veins'),
-    goldCh: clamp((0.03 + 0.02 * lvl('goldrush') + p.gold) * c.goldM, 0, 0.25),
-    specCh: clamp((0.02 + 0.015 * lvl('lucky') + p.spec) * c.specM, 0, 0.15),
-    valueMult: (1 + 0.25 * lvl('polish')) * (run.pots.greed ? 2 : 1),
-    runTime: 45 + 5 * lvl('shift') + (run.pots.haste ? 20 : 0),
+    goldCh: clamp((0.02 + 0.012 * lvl('goldrush') + p.gold) * c.goldM, 0, 0.12),
+    specCh: clamp((0.015 + 0.01 * lvl('lucky') + p.spec) * c.specM, 0, 0.10),
+    gemCh: clamp(0.02 + 0.015 * lvl('gemology'), 0, 0.12),
+    valueMult: (1 + 0.2 * lvl('polish')) * (run.pots.greed ? 2 : 1),
+    runTime: 30 + 3 * lvl('shift') + (run.pots.haste ? 15 : 0),
     frostDur: 4 + 2 * lvl('frost'),
     bolts: 3 + lvl('storm') + c.bolt,
     splash: p.splash,
+    comboCap: 30 + 10 * lvl('combo'),
+    bombPow: 5 + 2.5 * lvl('demo'),
+    frenzyDur: (4 + lvl('fury')) * 1000,
   };
 }
 
 // ---------- state ----------
 let state = 'base'; // 'base' | 'run' | 'ending' | 'results'
 let run = { stones: 0, gold: 0, depth: 0, startDepth: 0, timeLeft: 0, pots: {}, manualSwings: 0, stormPotT: 0 };
-let rockHP = 50, rockMaxHP = 50, rockCells = [];
-let swingT = 999, swingCD = 0, autoAcc = 0;
-let hitFlash = 0, shake = 0, frostT = 0, magnetT = 0, endingT = 0;
-let chunks = [], particles = [], popups = [], bolts = [], pendingBolts = [];
+let rockHP = 55, rockMaxHP = 55, rockCells = [];
+let swingT = 999, swingCD = 320, autoAcc = 0;
+let hitFlash = 0, shake = 0, frostT = 0, magnetT = 0, frenzyT = 0, endingT = 0;
+let combo = 0, lastManualT = -9999;
+let nugget = null, nuggetT = 12000;
+let chunks = [], particles = [], popups = [], bolts = [], pendingBolts = [], toasts = [];
 let banner = null;
 let elapsed = 0, lastTime = performance.now();
 let stats = null;
 
-function rockHPFor(d) { return Math.round(50 * Math.pow(1.55, d)); }
-function depthValue(d) { return Math.pow(1.3, d); }
-function tierFor(d) { return TIERS[d % TIERS.length]; }
+const isGeode = d => d % 5 === 4;
+function rockHPFor(d) { return Math.round(55 * Math.pow(1.62, d) * (isGeode(d) ? 2.5 : 1)); }
+function depthValue(d) { return Math.pow(1.28, d); }
+function tierFor(d) { return isGeode(d) ? GEODE_TIER : TIERS[d % TIERS.length]; }
 
 function genRock(depth) {
   const rand = mulberry(depth * 7919 + 13);
@@ -372,7 +435,7 @@ function genRock(depth) {
     const hw = Math.max(2, Math.round(maxHW * (0.45 + 0.6 * Math.pow(Math.sin(Math.PI * Math.pow(t, 0.75)), 0.8)) + (rand() - 0.5) * 1.6));
     const row = [];
     for (let cc = -hw; cc <= hw; cc++) {
-      row.push({ c: cc, shade: Math.floor(rand() * 3), spark: rand() < 0.07 });
+      row.push({ c: cc, shade: Math.floor(rand() * 3), spark: rand() < (isGeode(depth) ? 0.13 : 0.07) });
     }
     rockCells.push(row);
   }
@@ -401,19 +464,42 @@ function tone(type, f0, f1, dur, vol, delay = 0) {
   o.start(t); o.stop(t + dur + 0.02);
 }
 const sfx = {
-  clink: () => tone('triangle', 800 + Math.random() * 400, 180, 0.08, 0.2),
+  clink: () => tone('triangle', 800 + Math.min(combo, 60) * 8 + Math.random() * 200, 180, 0.08, 0.2),
   crit:  () => { tone('square', 300, 60, 0.15, 0.25); tone('triangle', 1400, 300, 0.1, 0.15); },
   brk:   () => { tone('sawtooth', 120, 30, 0.5, 0.35); tone('square', 500, 80, 0.3, 0.2); },
   blip:  () => tone('sine', 700 + Math.random() * 200, 1200, 0.06, 0.1),
   goldb: () => { tone('sine', 900, 1600, 0.08, 0.15); tone('sine', 1300, 2000, 0.1, 0.1, 0.05); },
+  gem:   () => { tone('sine', 1200, 2200, 0.12, 0.14); tone('sine', 1800, 2600, 0.14, 0.1, 0.06); },
   spec:  () => { tone('sine', 500, 1000, 0.15, 0.15); tone('sine', 800, 1600, 0.2, 0.12, 0.08); },
   zap:   () => { tone('sawtooth', 2000, 100, 0.15, 0.25); tone('square', 150, 50, 0.2, 0.2); },
   frz:   () => { tone('sine', 1800, 600, 0.4, 0.15); tone('sine', 2400, 900, 0.5, 0.1, 0.1); },
   mag:   () => tone('sawtooth', 100, 800, 0.3, 0.15),
+  boom:  () => { tone('sawtooth', 90, 25, 0.4, 0.4); tone('square', 400, 60, 0.25, 0.2); },
+  fren:  () => { tone('square', 200, 800, 0.25, 0.2); tone('square', 300, 1200, 0.3, 0.15, 0.1); },
+  prism: () => { for (let i = 0; i < 4; i++) tone('sine', 600 + i * 300, 900 + i * 300, 0.15, 0.1, i * 0.06); },
   horn:  () => { tone('square', 400, 400, 0.15, 0.2); tone('square', 300, 300, 0.25, 0.2, 0.18); },
   buy:   () => { tone('sine', 600, 900, 0.08, 0.15); tone('sine', 900, 1300, 0.1, 0.15, 0.07); },
+  ach:   () => { tone('sine', 700, 700, 0.1, 0.15); tone('sine', 900, 900, 0.1, 0.15, 0.1); tone('sine', 1200, 1200, 0.18, 0.15, 0.2); },
   err:   () => tone('square', 140, 100, 0.12, 0.15),
 };
+
+// ---------- achievements ----------
+function award(id) {
+  if (sv.ach[id]) return;
+  const a = ACHS.find(x => x.id === id);
+  if (!a) return;
+  sv.ach[id] = true;
+  sv.gold += a.gold;
+  toasts.push({ txt: `🏆 ${a.name}  +${a.gold}🪙`, t: 0, life: 3000 });
+  if (toasts.length > 4) toasts.shift();
+  sfx.ach();
+  save();
+}
+function checkLifetimeAchs() {
+  if (sv.lifeStones >= 10000) award('st10k');
+  if (sv.lifeStones >= 1000000) award('st1m');
+  if (sv.lifeStones >= 100000000) award('st100m');
+}
 
 // ---------- popups / particles ----------
 function popup(x, y, txt, color, size = 15) {
@@ -429,61 +515,103 @@ function burst(x, y, color, n, speed = 220) {
 }
 
 // ---------- chunks ----------
-const CHUNK_COLORS = { stone: '#9aa0ab', gold: '#ffd94a', storm: '#7fd0ff', frost: '#aef4ff', magnet: '#d08bff' };
-function spawnChunk(x, y, type, val) {
-  if (chunks.length > 260) { collectValue({ type, val, x, y }); return; }
+const CHUNK_COLORS = {
+  stone: '#9aa0ab', gold: '#ffd94a', gem: '#7fe08a',
+  storm: '#7fd0ff', frost: '#aef4ff', magnet: '#d08bff',
+  bomb: '#ff9a3c', frenzy: '#ff5a5a', prism: '#ffffff',
+};
+const SPECIALS = ['storm', 'frost', 'magnet', 'bomb', 'frenzy', 'prism'];
+const SPECIAL_W = [3, 2, 2, 3, 2, 1];
+function rollSpecial() {
+  const total = SPECIAL_W.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < SPECIALS.length; i++) {
+    r -= SPECIAL_W[i];
+    if (r < 0) return SPECIALS[i];
+  }
+  return 'storm';
+}
+function spawnChunk(x, y, type, val, color) {
+  if (chunks.length > 260) {
+    if (type === 'stone' || type === 'gem') run.stones += val;
+    else if (type === 'gold') run.gold += 1;
+    return;
+  }
   chunks.push({
-    x, y, type, val,
+    x, y, type, val, color: color || CHUNK_COLORS[type],
     vx: rnd(-380, -80), vy: rnd(-420, -180),
     gy: GROUND_Y + rnd(18, 62),
     state: 'fly', groundT: 0, spin: rnd(0, Math.PI * 2), size: type === 'stone' ? rnd(7, 11) : 12,
   });
 }
 function rollChunkType() {
-  if (Math.random() < stats.specCh) {
-    const s = ['storm', 'frost', 'magnet'];
-    return s[Math.floor(Math.random() * s.length)];
-  }
+  if (Math.random() < stats.specCh) return rollSpecial();
+  if (Math.random() < stats.gemCh) return 'gem';
   if (Math.random() < stats.goldCh) return 'gold';
   return 'stone';
 }
-function spawnChunks(n, x, y) {
+function spawnChunks(n, x, y, manual) {
+  const comboMult = manual ? 1 + Math.min(combo, stats.comboCap) * 0.015 : 1;
   let specialUsed = false;
   for (let i = 0; i < n; i++) {
     let type = rollChunkType();
-    if (type !== 'stone' && type !== 'gold') {
+    if (type !== 'stone' && type !== 'gold' && type !== 'gem') {
       if (specialUsed) type = 'stone';
       specialUsed = true;
     }
-    const val = type === 'stone' ? depthValue(run.depth) * stats.valueMult : 1;
-    spawnChunk(x + rnd(-10, 10), y + rnd(-10, 10), type, val);
+    const baseVal = type === 'gem' ? 10 : 1;
+    const val = (type === 'gold' || SPECIALS.includes(type)) ? 1
+      : baseVal * depthValue(run.depth) * stats.valueMult * comboMult;
+    const color = type === 'gem' ? tierFor(run.depth).spark : undefined;
+    spawnChunk(x + rnd(-10, 10), y + rnd(-10, 10), type, val, color);
   }
 }
 function collectValue(ch) {
   if (ch.type === 'stone') {
     run.stones += ch.val;
     sfx.blip();
+  } else if (ch.type === 'gem') {
+    run.stones += ch.val;
+    sfx.gem();
+    popup(ch.x, ch.y - 10, `+${fmt(ch.val)} 💠`, ch.color, 14);
   } else if (ch.type === 'gold') {
     run.gold += 1;
     sfx.goldb();
     popup(90, 70, '+1', '#ffd94a', 14);
-    if (lvl('midas')) run.stones += 5 * depthValue(run.depth) * stats.valueMult;
+    if (lvl('midas')) run.stones += 10 * depthValue(run.depth) * stats.valueMult;
   } else if (ch.type === 'storm') {
-    sfx.spec();
+    seen('storm'); sfx.spec();
     triggerStorm();
   } else if (ch.type === 'frost') {
-    sfx.frz();
+    seen('frost'); sfx.frz();
     frostT = Math.max(frostT, stats.frostDur * 1000);
     popup(W / 2, 60, '❄ TIME FROZEN!', '#aef4ff', 20);
   } else if (ch.type === 'magnet') {
-    sfx.mag();
+    seen('magnet'); sfx.mag();
     magnetT = 5000;
     popup(W / 2, 60, '🧲 MAGNETIZED!', '#d08bff', 20);
-    for (const c of chunks) if (c.state !== 'collect') c.state = 'collect';
+    for (const c of chunks) if (c.state !== 'collect' && c.type !== 'bomb') c.state = 'collect';
+  } else if (ch.type === 'frenzy') {
+    seen('frenzy'); sfx.fren();
+    frenzyT = Math.max(frenzyT, stats.frenzyDur);
+    popup(W / 2, 60, '🔥 FRENZY! TAP FREELY!', '#ff5a5a', 20);
+  } else if (ch.type === 'prism') {
+    seen('prism'); sfx.prism();
+    popup(W / 2, 60, '🌈 PRISM! VALUES x2!', '#ffffff', 20);
+    for (const c of chunks) {
+      if (c.type === 'stone' || c.type === 'gem') c.val *= 2;
+      if (c.type !== 'bomb' && c.state !== 'collect') c.state = 'collect';
+    }
+  }
+}
+function seen(type) {
+  if (!sv.seen[type]) {
+    sv.seen[type] = true;
+    if (SPECIALS.every(s => sv.seen[s])) award('spec6');
   }
 }
 
-// ---------- storm ----------
+// ---------- storm / bomb ----------
 function triggerStorm() {
   popup(W / 2, 60, '🌩 STORM!', '#7fd0ff', 20);
   for (let i = 0; i < stats.bolts; i++) {
@@ -503,7 +631,19 @@ function fireBolt(x) {
   burst(x, y, '#7fd0ff', 14, 300);
   if (state === 'run') {
     damageRock(stats.dmg * 4, x, y, false);
-    spawnChunks(2, x - 60, y);
+    spawnChunks(2, x - 60, y, false);
+  }
+}
+function explodeBomb(c) {
+  seen('bomb');
+  sfx.boom();
+  shake = Math.max(shake, 16);
+  burst(c.x, c.y, '#ff9a3c', 24, 340);
+  burst(c.x, c.y, '#fff2b0', 12, 260);
+  if (state === 'run') {
+    const hx = ROCK_CX - 95 + rnd(0, 30), hy = rnd(320, 440);
+    damageRock(stats.dmg * stats.bombPow, hx, hy);
+    if (state === 'run') spawnChunks(3, hx, hy, false);
   }
 }
 
@@ -515,21 +655,31 @@ function damageRock(dmg, x, y, showNum = true) {
   if (rockHP <= 0) breakLayer();
 }
 function breakLayer() {
+  const geode = isGeode(run.depth);
   const t = tierFor(run.depth);
   sfx.brk();
-  shake = Math.max(shake, 20);
+  shake = Math.max(shake, geode ? 26 : 20);
   burst(ROCK_CX, 360, t.spark, 40, 380);
   burst(ROCK_CX, 360, t.body[0], 30, 300);
-  const bonus = 8 + run.depth * 2;
+  const bonus = Math.min(80, (8 + run.depth * 2) * (geode ? 4 : 1));
   for (let i = 0; i < bonus; i++) {
-    spawnChunk(ROCK_CX + rnd(-60, 60), rnd(280, 420), Math.random() < stats.goldCh * 1.5 ? 'gold' : 'stone', depthValue(run.depth) * stats.valueMult * 2);
+    spawnChunk(ROCK_CX + rnd(-60, 60), rnd(280, 420),
+      Math.random() < stats.goldCh * 1.5 ? 'gold' : 'stone',
+      depthValue(run.depth) * stats.valueMult * (geode ? 3 : 2));
+  }
+  if (geode) {
+    for (let i = 0; i < 2; i++) spawnChunk(ROCK_CX + rnd(-50, 50), rnd(300, 400), rollSpecial(), 1);
+    award('geode');
   }
   run.depth++;
   if (lvl('tmine') && state === 'run') {
-    run.timeLeft += 4;
-    popup(W / 2, 105, '+4s', '#7fe08a', 16);
+    run.timeLeft += 3;
+    popup(W / 2, 105, '+3s', '#7fe08a', 16);
   }
-  banner = { txt: `LAYER ${run.depth + 1} — ${tierFor(run.depth).name.toUpperCase()}!`, t: 0, life: 1400 };
+  banner = {
+    txt: geode ? '💎 GEODE CRACKED!' : `LAYER ${run.depth + 1} — ${tierFor(run.depth).name.toUpperCase()}!`,
+    t: 0, life: 1400,
+  };
   rockMaxHP = rockHPFor(run.depth);
   rockHP = rockMaxHP;
   genRock(run.depth);
@@ -537,7 +687,13 @@ function breakLayer() {
 function doSwing(source) {
   if (state !== 'run') return;
   const auto = source !== 'manual';
-  let dmg = stats.dmg * (auto ? stats.autoPow : 1);
+  if (!auto) {
+    combo = (elapsed - lastManualT <= 1400) ? combo + 1 : 1;
+    lastManualT = elapsed;
+    if (combo >= 50) award('combo50');
+  }
+  const comboMult = auto ? 1 : 1 + Math.min(combo, stats.comboCap) * 0.015;
+  let dmg = stats.dmg * (auto ? stats.autoPow : comboMult);
   const isCrit = Math.random() < stats.crit;
   const hx = ROCK_CX - 95 + rnd(0, 30), hy = rnd(320, 440);
   if (isCrit) {
@@ -554,11 +710,11 @@ function doSwing(source) {
   burst(hx, hy, t.spark, isCrit ? 12 : 6, isCrit ? 300 : 200);
   damageRock(dmg, hx, hy);
   if (state !== 'run') return; // layer break may have ended things
-  let n = stats.chunks + (isCrit ? stats.splash : 0);
-  spawnChunks(n, hx, hy);
+  let n = stats.chunks + (isCrit ? stats.splash : 0) + (!auto && frenzyT > 0 ? 1 : 0);
+  spawnChunks(n, hx, hy, !auto);
   if (isCrit && lvl('shock')) {
     damageRock(stats.dmg * 0.5, hx, hy - 30);
-    if (state === 'run') spawnChunks(1, hx, hy - 30);
+    if (state === 'run') spawnChunks(1, hx, hy - 30, false);
   }
   if (!auto && lvl('over') && run.manualSwings % 10 === 0) {
     popup(W / 2, 105, '🔁 OVERDRIVE!', '#8fd0ff', 16);
@@ -567,7 +723,7 @@ function doSwing(source) {
 }
 function manualSwing() {
   if (state !== 'run') return;
-  if (swingT < swingCD) return;
+  if (frenzyT <= 0 && swingT < swingCD) return;
   doSwing('manual');
 }
 
@@ -582,12 +738,15 @@ function startRun() {
   };
   sv.armed = {};
   stats = calcStats();
+  swingCD = stats.cooldown;
   run.timeLeft = stats.runTime;
   rockMaxHP = rockHPFor(run.depth);
   rockHP = rockMaxHP;
   genRock(run.depth);
   chunks = []; bolts = []; pendingBolts = [];
-  frostT = 0; magnetT = 0; autoAcc = 0;
+  frostT = 0; magnetT = 0; frenzyT = 0; autoAcc = 0;
+  combo = 0; lastManualT = -9999;
+  nugget = null; nuggetT = 9000 + rnd(0, 6000);
   state = 'run';
   banner = { txt: 'MINE!', t: 0, life: 900 };
   sfx.buy();
@@ -599,8 +758,12 @@ function endRun() {
   state = 'ending';
   endingT = 0;
   sfx.horn();
-  for (const c of chunks) c.state = 'collect';
+  for (let i = chunks.length - 1; i >= 0; i--) {
+    if (chunks[i].type === 'bomb') { explodeBomb(chunks[i]); chunks.splice(i, 1); }
+    else chunks[i].state = 'collect';
+  }
   pendingBolts = [];
+  nugget = null;
 }
 function finishRun() {
   state = 'results';
@@ -611,6 +774,13 @@ function finishRun() {
   const depthReached = run.depth + 1;
   const newBest = depthReached > sv.bestDepth;
   if (newBest) sv.bestDepth = depthReached;
+  award('run1');
+  if (sv.runs >= 25) award('runs25');
+  if (depthReached >= 5) award('layer5');
+  if (depthReached >= 10) award('layer10');
+  if (depthReached >= 20) award('layer20');
+  if (depthReached >= 40) award('layer40');
+  checkLifetimeAchs();
   save();
   document.getElementById('resultRows').innerHTML =
     `<div class="rrow">🪨 Stones mined: <b>${fmt(run.stones)}</b></div>` +
@@ -628,7 +798,9 @@ function update(dt) {
   if (hitFlash > 0) hitFlash -= dt / 100;
   if (shake > 0) shake = Math.max(0, shake - dt / 28);
   if (magnetT > 0) magnetT -= dt;
+  if (frenzyT > 0) frenzyT -= dt;
   if (banner) { banner.t += dt; if (banner.t > banner.life) banner = null; }
+  if (combo > 0 && elapsed - lastManualT > 1400) combo = 0;
 
   if (state === 'run') {
     stats = calcStats();
@@ -643,6 +815,18 @@ function update(dt) {
     if (run.pots.storm) {
       run.stormPotT -= dt;
       if (run.stormPotT <= 0) { run.stormPotT = 8000; triggerStorm(); }
+    }
+    // golden nugget flyby
+    if (nugget) {
+      nugget.x += nugget.vx * dt / 1000;
+      nugget.y += Math.sin(elapsed / 300 + nugget.wob) * 30 * dt / 1000;
+      if (nugget.x > W + 40) nugget = null;
+    } else {
+      nuggetT -= dt;
+      if (nuggetT <= 0) {
+        nugget = { x: -30, y: rnd(110, 300), vx: rnd(110, 170), wob: rnd(0, 6) };
+        nuggetT = 12000 + rnd(0, 10000);
+      }
     }
     if (run.timeLeft <= 0 && frostT <= 0) endRun();
   }
@@ -673,12 +857,16 @@ function update(dt) {
         if (Math.abs(c.vy) > 130) { c.vy = -c.vy * 0.4; c.vx *= 0.6; }
         else { c.state = 'ground'; c.groundT = 0; }
       }
-      if (magnetT > 0) c.state = 'collect';
+      if (magnetT > 0 && c.type !== 'bomb') c.state = 'collect';
     } else if (c.state === 'ground') {
       c.groundT += dt;
+      if (c.type === 'bomb') {
+        if (c.groundT > 800) { explodeBomb(c); chunks.splice(i, 1); }
+        continue;
+      }
       if (magnetT > 0 || c.groundT > stats.collectDelay) c.state = 'collect';
     } else { // collect: fly to HUD counter
-      const tx = c.type === 'gold' ? 60 : 60, ty = c.type === 'gold' ? 64 : 32;
+      const tx = 60, ty = c.type === 'gold' ? 64 : 32;
       const dx = tx - c.x, dy = ty - c.y;
       const d = Math.hypot(dx, dy);
       const sp = 900 + (c.collectV = (c.collectV || 0) + 2600 * dt / 1000);
@@ -705,6 +893,10 @@ function update(dt) {
     p.t += dt;
     p.y -= 40 * dt / 1000;
     if (p.t > p.life) popups.splice(i, 1);
+  }
+  for (let i = toasts.length - 1; i >= 0; i--) {
+    toasts[i].t += dt;
+    if (toasts[i].t > toasts[i].life) toasts.splice(i, 1);
   }
 }
 
@@ -748,7 +940,6 @@ function drawBackground() {
   // ground
   px(0, GROUND_Y, W, H - GROUND_Y, '#2e2836');
   px(0, GROUND_Y, W, 6, '#3d3548');
-  ctx.fillStyle = '#262130';
   for (let i = 0; i < 14; i++) px((i * 173 + 40) % W, GROUND_Y + 20 + (i * 67 % 56), 26, 8, '#262130');
   // little ground crystals
   for (const [cx2, col] of [[80, '#7fd0ff'], [880, '#c99aff'], [340, '#7fe08a']]) {
@@ -877,9 +1068,10 @@ function drawChunks() {
     ctx.save();
     ctx.translate(c.x, c.y);
     ctx.rotate(c.state === 'fly' ? c.spin : 0);
-    const col = CHUNK_COLORS[c.type];
+    const col = c.color;
     if (c.type !== 'stone' && c.type !== 'gold') {
-      ctx.shadowColor = col;
+      ctx.shadowColor = c.type === 'prism'
+        ? `hsl(${(elapsed / 4) % 360},90%,70%)` : col;
       ctx.shadowBlur = 10 + 5 * Math.sin(elapsed / 150);
     }
     ctx.fillStyle = col;
@@ -891,12 +1083,32 @@ function drawChunks() {
       ctx.fillRect(-c.size / 2, -c.size / 2, c.size, c.size);
       ctx.fillStyle = 'rgba(255,255,255,0.25)';
       ctx.fillRect(-c.size / 2, -c.size / 2, c.size / 2, c.size / 2);
+    } else if (c.type === 'bomb') {
+      ctx.beginPath();
+      ctx.arc(0, 0, 8, 0, Math.PI * 2);
+      ctx.fill();
+      // blinking fuse when landed
+      if (c.state === 'ground' && Math.sin(c.groundT / 60) > 0) {
+        ctx.fillStyle = '#fff2b0';
+        ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+      }
     } else {
-      // special ore: diamond
+      // gem / special ore: diamond
       ctx.beginPath();
       ctx.moveTo(0, -9); ctx.lineTo(8, 0); ctx.lineTo(0, 9); ctx.lineTo(-8, 0);
       ctx.fill();
     }
+    ctx.restore();
+  }
+  // golden nugget flyby
+  if (nugget) {
+    ctx.save();
+    ctx.translate(nugget.x, nugget.y);
+    ctx.shadowColor = '#ffd94a';
+    ctx.shadowBlur = 16 + 8 * Math.sin(elapsed / 120);
+    ctx.font = '28px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText('🪙', 0, 10);
     ctx.restore();
   }
 }
@@ -952,14 +1164,27 @@ function drawPopups() {
     ctx.fillText(banner.txt, W / 2, 170);
     ctx.globalAlpha = 1;
   }
+  // achievement toasts, top-right stack
+  ctx.textAlign = 'right';
+  ctx.font = 'bold 14px Courier New';
+  toasts.forEach((t, i) => {
+    const a = t.t > t.life - 400 ? (t.life - t.t) / 400 : Math.min(1, t.t / 200);
+    ctx.globalAlpha = a;
+    const y = 100 + i * 26;
+    ctx.fillStyle = '#0b0b10';
+    ctx.fillText(t.txt, W - 18, y + 2);
+    ctx.fillStyle = '#ffd94a';
+    ctx.fillText(t.txt, W - 20, y);
+  });
+  ctx.globalAlpha = 1;
 }
 
 function drawHUD() {
-  // stones + gold counters
   ctx.textAlign = 'left';
   ctx.font = 'bold 20px Courier New';
-  const stoneShow = state === 'run' || state === 'ending' ? run.stones : sv.stones;
-  const goldShow = state === 'run' || state === 'ending' ? run.gold : sv.gold;
+  const inRun = state === 'run' || state === 'ending';
+  const stoneShow = inRun ? run.stones : sv.stones;
+  const goldShow = inRun ? run.gold : sv.gold;
   ctx.fillStyle = '#0b0b10';
   ctx.fillText(`🪨 ${fmt(stoneShow)}`, 22, 40);
   ctx.fillText(`🪙 ${fmt(goldShow)}`, 22, 72);
@@ -967,7 +1192,7 @@ function drawHUD() {
   ctx.fillText(`🪨 ${fmt(stoneShow)}`, 20, 38);
   ctx.fillStyle = '#ffd94a';
   ctx.fillText(`🪙 ${fmt(goldShow)}`, 20, 70);
-  if (state === 'run' && (run.stones !== sv.stones)) {
+  if (inRun) {
     ctx.font = 'bold 12px Courier New';
     ctx.fillStyle = '#8fa0c0';
     ctx.fillText('THIS RUN', 20, 90);
@@ -983,7 +1208,7 @@ function drawHUD() {
   }
 
   // timer
-  if (state === 'run' || state === 'ending') {
+  if (inRun) {
     const frozen = frostT > 0;
     const bw = 320, bx = (W - bw) / 2, by = 18;
     px(bx - 3, by - 3, bw + 6, 24, '#0b0b10');
@@ -994,11 +1219,27 @@ function drawHUD() {
     ctx.font = 'bold 15px Courier New';
     ctx.fillStyle = '#fff';
     ctx.fillText(frozen ? `❄ ${Math.ceil(run.timeLeft)}s` : `${Math.ceil(Math.max(0, run.timeLeft))}s`, W / 2, by + 14);
+    // combo meter
+    if (combo > 1) {
+      const mult = 1 + Math.min(combo, stats.comboCap) * 0.015;
+      ctx.font = 'bold 15px Courier New';
+      ctx.fillStyle = combo >= stats.comboCap ? '#ff9a3c' : '#7fe08a';
+      ctx.fillText(`COMBO x${combo}  (${mult.toFixed(2)} dmg)`, W / 2, 58);
+    }
   }
   if (frostT > 0) {
     ctx.strokeStyle = `rgba(150,220,255,${0.25 + 0.1 * Math.sin(elapsed / 200)})`;
     ctx.lineWidth = 10;
     ctx.strokeRect(5, 5, W - 10, H - 10);
+  }
+  if (frenzyT > 0) {
+    ctx.strokeStyle = `rgba(255,90,90,${0.3 + 0.15 * Math.sin(elapsed / 90)})`;
+    ctx.lineWidth = 10;
+    ctx.strokeRect(5, 5, W - 10, H - 10);
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 16px Courier New';
+    ctx.fillStyle = '#ff5a5a';
+    ctx.fillText(`🔥 FRENZY ${Math.ceil(frenzyT / 1000)}s`, W / 2, 82);
   }
 
   // base state helper text
@@ -1012,7 +1253,7 @@ function drawHUD() {
     ctx.font = 'bold 14px Courier New';
     ctx.fillStyle = '#8fa0c0';
     if (sv.runs === 0) {
-      ctx.fillText('CLICK / TAP / SPACE TO MINE THE ROCK', W / 2, 130);
+      ctx.fillText('CLICK / TAP / SPACE TO MINE — KEEP A RHYTHM TO BUILD COMBO', W / 2, 130);
       ctx.fillText('COLLECT STONES 🪨 AND SPEND THEM ON SKILLS', W / 2, 150);
     }
   }
@@ -1038,12 +1279,14 @@ function closePanels() {
   for (const p of document.querySelectorAll('.panel')) p.classList.remove('open');
 }
 function updateBars() {
-  $('startBtn').style.display = state === 'base' ? '' : 'none';
-  $('skillsBtn').style.display = state === 'base' ? '' : 'none';
-  $('shopBtn').style.display = state === 'base' ? '' : 'none';
+  const base = state === 'base';
+  $('startBtn').style.display = base ? '' : 'none';
+  $('skillsBtn').style.display = base ? '' : 'none';
+  $('shopBtn').style.display = base ? '' : 'none';
+  $('awardsBtn').style.display = base ? '' : 'none';
   const row = $('potionRow');
   row.innerHTML = '';
-  if (state === 'base') {
+  if (base) {
     for (const pt of POTIONS) {
       if (sv.armed[pt.id]) {
         const d = document.createElement('div');
@@ -1059,7 +1302,7 @@ function renderSkills() {
   $('skillWallet').textContent = `🪨 ${fmt(sv.stones)}`;
   const grid = $('skillGrid');
   grid.innerHTML = '';
-  for (let b = 0; b < 4; b++) {
+  for (let b = 0; b < 5; b++) {
     const col = document.createElement('div');
     col.className = 'branch';
     col.innerHTML = `<h3>${BRANCH_NAMES[b]}</h3>`;
@@ -1119,10 +1362,28 @@ function renderShop() {
   }
 }
 
+function renderAwards() {
+  const done = ACHS.filter(a => sv.ach[a.id]).length;
+  $('awardsCount').textContent = `${done}/${ACHS.length}`;
+  const list = $('achList');
+  list.innerHTML = '';
+  for (const a of ACHS) {
+    const got = !!sv.ach[a.id];
+    const div = document.createElement('div');
+    div.className = 'achrow' + (got ? ' done' : '');
+    div.innerHTML =
+      `<div class="aicon">${got ? '🏆' : '🔒'}</div>` +
+      `<div><div class="aname">${a.name}</div><div class="adesc">${a.desc}</div></div>` +
+      `<div class="areward">${got ? '✓' : `+${a.gold} 🪙`}</div>`;
+    list.appendChild(div);
+  }
+}
+
 // ---------- UI events ----------
 $('startBtn').addEventListener('click', startRun);
 $('skillsBtn').addEventListener('click', () => { closePanels(); renderSkills(); $('skills').classList.add('open'); });
 $('shopBtn').addEventListener('click', () => { closePanels(); renderShop(); $('shop').classList.add('open'); });
+$('awardsBtn').addEventListener('click', () => { closePanels(); renderAwards(); $('awards').classList.add('open'); });
 $('muteBtn').addEventListener('click', () => {
   sv.muted = !sv.muted;
   $('muteBtn').textContent = sv.muted ? '🔇' : '🔊';
@@ -1165,8 +1426,13 @@ $('shop').addEventListener('click', e => {
     const it = (kind === 'picks' ? PICKS : CHARS).find(x => x.id === id);
     if (sv.gold < it.cost) { sfx.err(); return; }
     sv.gold -= it.cost;
-    if (kind === 'picks') { sv.picks.push(id); sv.pick = id; }
-    else { sv.chars.push(id); sv.char = id; }
+    if (kind === 'picks') {
+      sv.picks.push(id); sv.pick = id;
+      if (sv.picks.length >= 3) award('picks3');
+    } else {
+      sv.chars.push(id); sv.char = id;
+      if (sv.chars.length >= CHARS.length) award('chars4');
+    }
     sfx.buy(); save(); renderShop();
   } else if (d.equip) {
     const [kind, id] = d.equip.split(':');
@@ -1179,6 +1445,18 @@ $('shop').addEventListener('click', e => {
 canvas.addEventListener('pointerdown', e => {
   e.preventDefault();
   audio();
+  const r = canvas.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width * W;
+  const y = (e.clientY - r.top) / r.height * H;
+  if (state === 'run' && nugget && Math.hypot(x - nugget.x, y - nugget.y) < 48) {
+    const g = (2 + Math.floor(rnd(0, 3))) * (lvl('jack') ? 3 : 1);
+    run.gold += g;
+    popup(nugget.x, nugget.y - 20, `+${g} 🪙`, '#ffd94a', 18);
+    burst(nugget.x, nugget.y, '#ffd94a', 16, 260);
+    sfx.goldb();
+    nugget = null;
+    return;
+  }
   manualSwing();
 });
 window.addEventListener('keydown', e => {
@@ -1206,7 +1484,17 @@ updateBars();
 window.addEventListener('beforeunload', save);
 
 // tiny debug hook
-window.ORE_DEBUG = { give(st, g) { sv.stones += st || 0; sv.gold += g || 0; save(); } };
+window.ORE_DEBUG = {
+  give(st, g) { sv.stones += st || 0; sv.gold += g || 0; save(); },
+  spawn(type) { spawnChunk(380, 300, type, depthValue(run.depth)); },
+  peek() {
+    return {
+      state, combo, depth: run.depth, timeLeft: run.timeLeft,
+      frenzy: frenzyT, frost: frostT, magnet: magnetT,
+      runStones: run.stones, runGold: run.gold, nugget: !!nugget,
+    };
+  },
+};
 
 function tick(now) {
   const dt = Math.min(50, now - lastTime);
